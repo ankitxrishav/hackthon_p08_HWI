@@ -26,33 +26,38 @@ export default function AppLayout({
 }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [isVerified, setIsVerified] = useState(false);
+  const pathname = usePathname();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   useEffect(() => {
     if (authLoading) {
-      return; // Wait until Firebase auth state is resolved
+      return; // Wait for the auth state to be determined
     }
+
     if (!user) {
-      router.push('/'); // Not logged in, send to login page
+      router.push('/'); // If no user, redirect to login page.
       return;
     }
 
-    // New logic: Check if onboarding has been completed for this session.
-    // If not, redirect to the onboarding page.
+    // User is logged in, now check for session onboarding status.
     const onboardingCompleteInSession = sessionStorage.getItem('onboardingComplete');
+
     if (!onboardingCompleteInSession) {
+      // If onboarding is not complete for this session, redirect to onboarding page.
       router.push('/onboarding');
     } else {
-      // Onboarding has been completed in this session, allow access to the app.
-      setIsVerified(true);
+      // Onboarding is complete for this session, allow access to the app.
+      setOnboardingChecked(true);
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, pathname]);
 
-  // Show a skeleton while we verify the user's auth state and session status
-  if (!isVerified) {
+  // Show a skeleton while we verify auth and onboarding status.
+  // This prevents content from flashing before redirects happen.
+  if (!onboardingChecked || authLoading || !user) {
     return <AppLayoutSkeleton />;
   }
-
+  
+  // All checks passed, render the main app shell.
   return (
     <AppShell>
       {children}
