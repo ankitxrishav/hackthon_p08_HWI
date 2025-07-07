@@ -85,6 +85,8 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
         }
     } catch (error) {
         console.error("Error getting user profile: ", error);
-        throw new Error("Could not retrieve user profile.");
+        // Return null instead of throwing an error to make the app more resilient to network issues.
+        // The calling component will handle the null case.
+        return null;
     }
 }
