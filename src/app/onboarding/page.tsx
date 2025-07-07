@@ -43,6 +43,18 @@ const steps = [
 
 const transportOptions: TransportMode[] = ['car', 'bike', 'metro', 'bus', 'walk', 'flights'];
 
+const defaultProfileValues: Omit<UserProfile, 'id' | 'baselineEmissions'> = {
+    transportModes: { car: { km_per_week: 50 } },
+    diet: 'mixed',
+    monthlyKwh: 150,
+    usesRenewable: false,
+    usesAcHeater: true,
+    monthlySpend: 4000,
+    householdSize: 2,
+    mealsPerDay: 3,
+};
+
+
 export default function OnboardingPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -52,16 +64,7 @@ export default function OnboardingPage() {
     const [isUpdateMode, setIsUpdateMode] = useState(false);
     
     const { control, trigger, handleSubmit, watch, getValues, reset } = useForm<UserProfile>({
-        defaultValues: {
-            transportModes: { car: { km_per_week: 50 } },
-            diet: 'mixed',
-            monthlyKwh: 150,
-            usesRenewable: false,
-            usesAcHeater: true,
-            monthlySpend: 4000,
-            householdSize: 2,
-            mealsPerDay: 3,
-        }
+        defaultValues: defaultProfileValues
     });
 
     useEffect(() => {
@@ -70,7 +73,8 @@ export default function OnboardingPage() {
                 const existingProfile = await getUserProfile(user.uid);
                 if (existingProfile) {
                     setIsUpdateMode(true);
-                    reset(existingProfile);
+                    const cleanProfile = Object.fromEntries(Object.entries(existingProfile).filter(([_, v]) => v != null));
+                    reset({ ...defaultProfileValues, ...cleanProfile });
                 }
             }
         };
@@ -98,23 +102,33 @@ export default function OnboardingPage() {
         try {
           const cleanedTransportModes = Object.entries(data.transportModes || {}).reduce((acc, [key, value]) => {
             if (value !== undefined) {
-              acc[key as TransportMode] = value;
+              acc[key as TransportMode] = { km_per_week: Number(value.km_per_week) || 0 };
             }
             return acc;
           }, {} as Partial<Record<TransportMode, TransportDetail>>);
 
-          const dataToSave = { ...data, transportModes: cleanedTransportModes };
+          const dataToSave: Omit<UserProfile, 'id' | 'baselineEmissions'> = {
+            diet: data.diet || 'mixed',
+            householdSize: Number(data.householdSize) || 1,
+            mealsPerDay: Number(data.mealsPerDay) || 1,
+            monthlyKwh: Number(data.monthlyKwh) || 0,
+            monthlySpend: Number(data.monthlySpend) || 0,
+            transportModes: cleanedTransportModes,
+            usesAcHeater: data.usesAcHeater ?? false,
+            usesRenewable: data.usesRenewable ?? false,
+          };
           
-          const baselineEmissions = calculateBaselineEmissions(dataToSave);
+          const baselineEmissions = calculateBaselineEmissions(dataToSave as UserProfile);
           const profileData: UserProfile = { ...dataToSave, baselineEmissions };
+          
           await setUserProfile(user.uid, profileData);
           
           sessionStorage.setItem('onboardingComplete', 'true');
 
           toast({ title: 'Success!', description: `Your carbon profile has been ${isUpdateMode ? 'updated' : 'created'}.` });
           router.push('/dashboard');
-        } catch (error) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Could not save your profile.' });
+        } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not save your profile.' });
           setIsLoading(false);
         }
     };
@@ -177,7 +191,7 @@ export default function OnboardingPage() {
                                               <Switch id={mode} checked={!!field.value} onCheckedChange={(checked) => field.onChange(checked ? { km_per_week: 0 } : undefined)} />
                                               <Label htmlFor={mode} className="capitalize text-base">{mode}</Label>
                                             </div>
-                                            {field.value && <Input type="number" placeholder='km/week' value={field.value.km_per_week || 0} onChange={e => field.onChange({km_per_week: parseInt(e.target.value, 10) || 0})} />}
+                                            {field.value && <Input type="number" placeholder='km/week' {...field} value={field.value.km_per_week ?? ''} onChange={e => field.onChange({km_per_week: e.target.value === '' ? undefined : parseInt(e.target.value, 10)})} />}
                                           </div>
                                         )}
                                     />
@@ -213,7 +227,7 @@ export default function OnboardingPage() {
                                         render={({ field }) => (
                                             <div className="space-y-2">
                                                 <Label htmlFor="meals">Average meals per day</Label>
-                                                <Input id="meals" type="number" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                                                <Input id="meals" type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                                             </div>
                                         )}
                                     />
@@ -223,7 +237,7 @@ export default function OnboardingPage() {
                                         render={({ field }) => (
                                             <div className="space-y-2">
                                                 <Label htmlFor="household">Number of people in household</Label>
-                                                <Input id="household" type="number" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                                                <Input id="household" type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                                             </div>
                                         )}
                                     />
@@ -235,7 +249,7 @@ export default function OnboardingPage() {
                                 <Controller name="monthlyKwh" control={control} render={({ field }) => (
                                     <div className="space-y-2">
                                         <Label htmlFor="energy">Monthly electricity use (kWh)</Label>
-                                        <Input id="energy" type="number" placeholder="e.g., 300" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                        <Input id="energy" type="number" placeholder="e.g., 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                                     </div>
                                 )}/>
                                 <Controller name="usesRenewable" control={control} render={({ field }) => (
@@ -259,7 +273,7 @@ export default function OnboardingPage() {
                                 render={({ field }) => (
                                     <div className="space-y-2">
                                         <Label>Monthly spend on non-essentials (fashion, electronics) (₹)</Label>
-                                        <Input type="number" placeholder="e.g., 2500" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                        <Input type="number" placeholder="e.g., 2500" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                                     </div>
                                 )}/>
                         )}

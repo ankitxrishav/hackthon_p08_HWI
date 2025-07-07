@@ -74,14 +74,23 @@ export default function ProfilePage() {
     try {
       const cleanedTransportModes = Object.entries(data.transportModes || {}).reduce((acc, [key, value]) => {
         if (value !== undefined) {
-          acc[key as TransportMode] = value;
+           acc[key as TransportMode] = { km_per_week: Number(value.km_per_week) || 0 };
         }
         return acc;
       }, {} as Partial<Record<TransportMode, TransportDetail>>);
       
-      const dataToSave = { ...data, transportModes: cleanedTransportModes };
+      const dataToSave: Omit<UserProfile, 'id' | 'baselineEmissions'> = {
+        diet: data.diet || 'mixed',
+        householdSize: Number(data.householdSize) || 1,
+        mealsPerDay: Number(data.mealsPerDay) || 1,
+        monthlyKwh: Number(data.monthlyKwh) || 0,
+        monthlySpend: Number(data.monthlySpend) || 0,
+        transportModes: cleanedTransportModes,
+        usesAcHeater: data.usesAcHeater ?? false,
+        usesRenewable: data.usesRenewable ?? false,
+      };
 
-      const baselineEmissions = calculateBaselineEmissions(dataToSave);
+      const baselineEmissions = calculateBaselineEmissions(dataToSave as UserProfile);
       const profileToSave: UserProfile = { ...dataToSave, baselineEmissions };
       
       await setUserProfile(user.uid, profileToSave);
@@ -90,8 +99,8 @@ export default function ProfilePage() {
         title: 'Success!',
         description: 'Your profile has been updated.',
       });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not save your profile.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not save your profile.' });
     } finally {
       setIsSaving(false);
     }
@@ -152,7 +161,7 @@ export default function ProfilePage() {
                           name={`transportModes.${mode as TransportMode}.km_per_week`}
                           control={control}
                           render={({ field }) => (
-                              <Input type="number" {...field} value={field.value?.km_per_week || 0} onChange={e => field.onChange({ km_per_week: parseInt(e.target.value, 10) || 0 })} />
+                              <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                           )}
                       />
                   </div>
@@ -182,14 +191,14 @@ export default function ProfilePage() {
              <div className="space-y-2">
               <Label>Household Size</Label>
               <Controller name="householdSize" control={control} render={({ field }) => (
-                  <Input type="number" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                  <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                 )}
               />
             </div>
              <div className="space-y-2">
               <Label>Meals Per Day</Label>
               <Controller name="mealsPerDay" control={control} render={({ field }) => (
-                  <Input type="number" {...field} value={field.value || 3} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                  <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                 )}
               />
             </div>
@@ -202,14 +211,14 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <Label>Monthly Electricity (kWh)</Label>
                <Controller name="monthlyKwh" control={control} render={({ field }) => (
-                  <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                  <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                 )}
               />
             </div>
             <div className="space-y-2">
               <Label>Monthly Spend on Non-essentials (₹)</Label>
                <Controller name="monthlySpend" control={control} render={({ field }) => (
-                  <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                  <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
                 )}
               />
             </div>
