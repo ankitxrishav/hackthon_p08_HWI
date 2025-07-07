@@ -42,6 +42,8 @@ export default function AppLayout({
     }
 
     // At this point, user is authenticated.
+    // Check session storage to see if onboarding is complete for this session.
+    // This enforces the survey on every new login.
     const onboardingCompleteInSession = sessionStorage.getItem('onboardingComplete');
     
     // If user is on the onboarding page, let them be. This prevents redirect loops.

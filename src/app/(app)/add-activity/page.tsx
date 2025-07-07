@@ -31,7 +31,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import type { CalculateEmissionInput, EmissionCategory } from '@/types';
-import { calculateEmission } from '@/ai/flows/calculate-emission';
+import { calculateActivityEmission } from '@/lib/carbon-engine';
 import { useAuth } from '@/hooks/use-auth';
 import { addActivityLog } from '@/lib/firestore';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,6 @@ export default function AddActivityPage() {
   const [travelMode, setTravelMode] = useState('car');
   const [distance, setDistance] = useState('');
   
-  const [mealType, setMealType] = useState('home');
   const [dietType, setDietType] = useState('veg');
 
   const [energyConsumed, setEnergyConsumed] = useState('');
@@ -77,7 +76,7 @@ export default function AddActivityPage() {
           description = `${travelMode.charAt(0).toUpperCase() + travelMode.slice(1)} ride for ${distance} km`;
           break;
         case 'Food':
-           input = { category, value: 1, details: { dietType } }; // mealType is not in factors
+           input = { category, value: 1, details: { dietType } };
            description = `${dietType} meal`;
           break;
         case 'Energy':
@@ -97,7 +96,7 @@ export default function AddActivityPage() {
           throw new Error('Invalid activity category.');
       }
       
-      const { emission } = await calculateEmission(input);
+      const { emission } = await calculateActivityEmission(input);
 
       await addActivityLog(user.uid, {
         category,
@@ -187,23 +186,6 @@ export default function AddActivityPage() {
             <TabsContent value="food" className="mt-6">
                <div className="space-y-4">
                  <div className="space-y-2">
-                  <Label>Meal Type</Label>
-                    <RadioGroup value={mealType} onValueChange={setMealType} className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <Label htmlFor="home" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
-                        <RadioGroupItem value="home" id="home" className="sr-only" />
-                         Home-cooked
-                      </Label>
-                       <Label htmlFor="takeout" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
-                        <RadioGroupItem value="takeout" id="takeout" className="sr-only" />
-                         Takeout
-                      </Label>
-                      <Label htmlFor="restaurant" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
-                        <RadioGroupItem value="restaurant" id="restaurant" className="sr-only" />
-                         Restaurant
-                      </Label>
-                  </RadioGroup>
-                </div>
-                <div className="space-y-2">
                   <Label>Diet Type</Label>
                   <RadioGroup value={dietType} onValueChange={setDietType} className='flex gap-2'>
                       <Label htmlFor="veg" className={cn("rounded-full border px-3 py-1 cursor-pointer transition-all", dietType === 'veg' ? 'bg-primary/20 border-primary text-primary-foreground' : 'bg-transparent')}>
