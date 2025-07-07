@@ -2,22 +2,46 @@
 
 import * as React from 'react';
 import type { CategoryBreakdown } from '@/types';
-import { Pie, PieChart, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { Pie, PieChart, Cell } from 'recharts';
 import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import type { ChartConfig } from '@/components/ui/chart';
+
+const chartConfig = {
+  Travel: { label: 'Travel', color: 'hsl(var(--chart-1))' },
+  Food: { label: 'Food', color: 'hsl(var(--chart-2))' },
+  Energy: { label: 'Energy', color: 'hsl(var(--chart-3))' },
+  Shopping: { label: 'Shopping', color: 'hsl(var(--chart-4))' },
+} satisfies ChartConfig;
 
 interface CategoryBreakdownChartProps {
   data: CategoryBreakdown[];
 }
 
 export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
+  const chartData = React.useMemo(
+    () =>
+      data.map((item) => ({
+        ...item,
+        fill: `var(--color-${item.name})`,
+      })),
+    [data]
+  );
+
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-full">
       <PieChart>
-         <ChartTooltipContent />
+        <ChartTooltip
+          cursor={false}
+          content={<ChartTooltipContent indicator="dot" nameKey="name" />}
+        />
         <Pie
-          data={data}
+          data={chartData}
           dataKey="emissions"
           nameKey="name"
           cx="50%"
@@ -50,18 +74,19 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
             );
           }}
         >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.fill} stroke={entry.fill} />
+          {chartData.map((entry) => (
+            <Cell
+              key={`cell-${entry.name}`}
+              fill={entry.fill}
+              stroke={entry.fill}
+            />
           ))}
         </Pie>
-        <Legend
-          iconSize={10}
-          wrapperStyle={{
-            paddingTop: '20px',
-            fontSize: '0.875rem'
-          }}
+        <ChartLegend
+          content={<ChartLegendContent nameKey="name" />}
+          className="[&_.recharts-legend-item-text]:text-muted-foreground"
         />
       </PieChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
