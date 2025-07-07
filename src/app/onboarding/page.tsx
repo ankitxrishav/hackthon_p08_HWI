@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler, type FieldValues } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,23 +23,25 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
-import { Car, CookingPot, Zap, ShoppingCart, Users, Loader2 } from 'lucide-react';
+import { Car, CookingPot, Zap, ShoppingCart, Users, Leaf, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { setUserProfile } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { UserProfile } from '@/types';
-
+import type { UserProfile, TransportMode } from '@/types';
+import { calculateBaselineEmissions } from '@/lib/calculations';
 
 const steps = [
-  { id: 1, title: 'Travel Habits', icon: Car, fields: ['travelMode', 'weeklyDistance'] },
-  { id: 2, title: 'Food Habits', icon: CookingPot, fields: ['diet'] },
-  { id: 3, title: 'Home Energy', icon: Zap, fields: ['monthlyKwh', 'usesRenewable'] },
-  { id: 4, title: 'Shopping', icon: ShoppingCart, fields: ['shoppingFrequency'] },
-  { id: 5, title: 'Household', icon: Users, fields: ['householdSize'] },
+  { id: 1, title: 'Welcome', icon: Leaf, fields: [] },
+  { id: 2, title: 'Travel Habits', icon: Car, fields: ['transportModes'] },
+  { id: 3, title: 'Food Habits', icon: CookingPot, fields: ['diet', 'householdSize'] },
+  { id: 4, title: 'Home Energy', icon: Zap, fields: ['monthlyKwh', 'usesRenewable', 'usesAcHeater'] },
+  { id: 5, title: 'Shopping', icon: ShoppingCart, fields: ['shoppingFrequency'] },
+  { id: 6, title: 'Review & Finish', icon: Check, fields: [] },
 ];
+
+const transportOptions: TransportMode[] = ['car', 'bike', 'metro', 'bus', 'walk', 'flights'];
 
 export default function OnboardingPage() {
     const { user } = useAuth();
@@ -48,24 +50,24 @@ export default function OnboardingPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     
-    const { control, trigger, handleSubmit, watch } = useForm<UserProfile>({
+    const { control, trigger, handleSubmit, watch, getValues } = useForm<UserProfile>({
         defaultValues: {
-            travelMode: 'car',
-            weeklyDistance: 50,
+            transportModes: { car: { km_per_week: 50 } },
             diet: 'mixed',
             monthlyKwh: 100,
             usesRenewable: false,
+            usesAcHeater: true,
             shoppingFrequency: 'monthly',
             householdSize: 2,
         }
     });
 
-    const weeklyDistance = watch('weeklyDistance');
+    const formValues = watch();
 
     const handleNext = async () => {
         const fields = steps[currentStep-1].fields;
         const isValid = await trigger(fields as any);
-        if(isValid) {
+        if(isValid || fields.length === 0) {
             setCurrentStep((prev) => Math.min(prev + 1, steps.length));
         }
     };
@@ -79,8 +81,10 @@ export default function OnboardingPage() {
         }
         setIsLoading(true);
         try {
-          await setUserProfile(user.uid, data);
-          toast({ title: 'Success!', description: 'Your profile has been created.' });
+          const baselineEmissions = calculateBaselineEmissions(data);
+          const profileData: UserProfile = { ...data, baselineEmissions };
+          await setUserProfile(user.uid, profileData);
+          toast({ title: 'Success!', description: 'Your carbon profile has been created.' });
           router.push('/dashboard');
         } catch (error) {
           toast({ variant: 'destructive', title: 'Error', description: 'Could not save your profile.' });
@@ -93,7 +97,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
           <Progress value={progress} className="mb-4 h-2" />
           <div className="flex items-center gap-3">
@@ -102,13 +106,10 @@ export default function OnboardingPage() {
             </div>
             <CardTitle>{steps[currentStep-1].title}</CardTitle>
           </div>
-          <CardDescription>
-            Help us understand your habits to create your personalized carbon profile.
-          </CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-            <CardContent className="min-h-[250px]">
+            <CardContent className="min-h-[350px]">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentStep}
@@ -116,106 +117,102 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -50 }}
                         transition={{ duration: 0.3 }}
+                        className="space-y-6"
                     >
                         {currentStep === 1 && (
-                            <div className="space-y-6">
-                            <Controller
-                                name="travelMode"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        <Label>How do you usually travel?</Label>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <SelectTrigger><SelectValue placeholder="Select travel type" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="car">Car</SelectItem>
-                                                <SelectItem value="bike">Bike</SelectItem>
-                                                <SelectItem value="public">Public Transport</SelectItem>
-                                                <SelectItem value="walk">Walk</SelectItem>
-                                                <SelectItem value="flights">Flights</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )} />
-                                <Controller
-                                    name="weeklyDistance"
-                                    control={control}
-                                    render={({ field }) => (
-                                         <div className="space-y-2">
-                                            <Label htmlFor="distance">Average distance per week</Label>
-                                            <div className="flex items-center gap-4">
-                                            <Slider
-                                                id="distance"
-                                                value={[field.value]}
-                                                onValueChange={(vals) => field.onChange(vals[0])}
-                                                max={500}
-                                                step={10}
-                                            />
-                                            <div className="font-bold w-20 text-center">{weeklyDistance} km</div>
-                                            </div>
-                                        </div>
-                                    )}
-                                />
+                            <div>
+                                <h2 className="text-2xl font-semibold">Welcome to Susthira!</h2>
+                                <p className="text-muted-foreground mt-2">Let’s understand your lifestyle to build your personalized carbon profile. This will help us give you accurate insights and recommendations.</p>
                             </div>
                         )}
                         {currentStep === 2 && (
-                             <Controller
-                                name="diet"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        <Label>What best describes your diet?</Label>
-                                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-2 gap-4">
-                                            <Label htmlFor="veg" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                                <RadioGroupItem value="veg" id="veg" className="peer sr-only" /> 🥗 Vegetarian
-                                            </Label>
-                                            <Label htmlFor="mixed" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                                <RadioGroupItem value="mixed" id="mixed" className="peer sr-only" /> 🍜 Mixed
-                                            </Label>
-                                            <Label htmlFor="non-veg" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                                <RadioGroupItem value="non-veg" id="non-veg" className="peer sr-only" /> 🍗 Non-Veg
-                                            </Label>
-                                            <Label htmlFor="high-meat" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                                <RadioGroupItem value="high-meat" id="high-meat" className="peer sr-only" /> 🥩 High-Meat
-                                            </Label>
-                                        </RadioGroup>
-                                    </div>
-                                )} />
+                             <div>
+                                <Label>What are your primary modes of transport?</Label>
+                                <p className="text-sm text-muted-foreground mb-4">Select all that apply and enter the average distance per week.</p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                  {transportOptions.map(mode => (
+                                    <Controller
+                                        key={mode}
+                                        name={`transportModes.${mode}`}
+                                        control={control}
+                                        render={({ field }) => (
+                                          <div className="space-y-2">
+                                            <div className="flex items-center gap-2 rounded-md border p-3">
+                                              <Switch id={mode} checked={!!field.value} onCheckedChange={(checked) => field.onChange(checked ? { km_per_week: 0 } : undefined)} />
+                                              <Label htmlFor={mode} className="capitalize text-base">{mode}</Label>
+                                            </div>
+                                            {field.value && <Input type="number" placeholder='km/week' value={field.value.km_per_week} onChange={e => field.onChange({km_per_week: parseInt(e.target.value, 10) || 0})} />}
+                                          </div>
+                                        )}
+                                    />
+                                  ))}
+                                </div>
+                            </div>
                         )}
                         {currentStep === 3 && (
-                            <div className="space-y-6">
+                             <div className="grid md:grid-cols-2 gap-8">
                                 <Controller
-                                    name="monthlyKwh"
+                                    name="diet"
                                     control={control}
                                     render={({ field }) => (
                                         <div className="space-y-2">
-                                            <Label htmlFor="energy">Monthly electricity use (kWh)</Label>
-                                            <Input id="energy" type="number" placeholder="e.g., 300" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                            <Label>What best describes your diet?</Label>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-1 gap-2">
+                                                <Label className="flex items-center justify-start rounded-md border p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                                    <RadioGroupItem value="vegetarian" id="veg" className="peer" /> <span className="ml-4">🥗 Vegetarian</span>
+                                                </Label>
+                                                <Label className="flex items-center justify-start rounded-md border p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                                    <RadioGroupItem value="mixed" id="mixed" className="peer" /> <span className="ml-4">🍜 Mixed</span>
+                                                </Label>
+                                                <Label className="flex items-center justify-start rounded-md border p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                                    <RadioGroupItem value="meat-heavy" id="heavy" className="peer" /> <span className="ml-4">🥩 Meat-heavy</span>
+                                                </Label>
+                                            </RadioGroup>
                                         </div>
-                                    )}
-                                />
-                                <Controller
-                                    name="usesRenewable"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <div className="flex items-center justify-between rounded-lg border p-4">
-                                            <Label htmlFor="renewable" className="flex flex-col space-y-1">
-                                            <span>Use renewable energy?</span>
-                                            <span className="font-normal leading-snug text-muted-foreground">e.g. solar panels</span>
-                                            </Label>
-                                            <Switch id="renewable" checked={field.value} onCheckedChange={field.onChange} />
-                                        </div>
-                                    )}
-                                />
+                                    )} />
+                                 <div className="space-y-4">
+                                     <Controller
+                                        name="householdSize"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="household">Number of people in household</Label>
+                                                <Input id="household" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                                            </div>
+                                        )}
+                                    />
+                                 </div>
                             </div>
                         )}
                         {currentStep === 4 && (
-                            <Controller
+                            <div className="space-y-6">
+                                <Controller name="monthlyKwh" control={control} render={({ field }) => (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="energy">Monthly electricity use (kWh)</Label>
+                                        <Input id="energy" type="number" placeholder="e.g., 300" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                    </div>
+                                )}/>
+                                <Controller name="usesRenewable" control={control} render={({ field }) => (
+                                    <div className="flex items-center justify-between rounded-lg border p-4">
+                                        <Label htmlFor="renewable" className="text-base">Do you use renewable energy (e.g., solar)?</Label>
+                                        <Switch id="renewable" checked={field.value} onCheckedChange={field.onChange} />
+                                    </div>
+                                )}/>
+                                 <Controller name="usesAcHeater" control={control} render={({ field }) => (
+                                    <div className="flex items-center justify-between rounded-lg border p-4">
+                                        <Label htmlFor="ac" className="text-base">Do you use AC or a heater regularly?</Label>
+                                        <Switch id="ac" checked={field.value} onCheckedChange={field.onChange} />
+                                    </div>
+                                )}/>
+                            </div>
+                        )}
+                        {currentStep === 5 && (
+                             <Controller
                                 name="shoppingFrequency"
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label>How often do you shop for new items?</Label>
+                                        <Label>How often do you shop for new items (clothing, electronics)?</Label>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <SelectTrigger><SelectValue placeholder="Select frequency" /></SelectTrigger>
                                             <SelectContent>
@@ -228,17 +225,28 @@ export default function OnboardingPage() {
                                 )}
                             />
                         )}
-                        {currentStep === 5 && (
-                             <Controller
-                                name="householdSize"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="household">Number of people in household</Label>
-                                        <Input id="household" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
-                                    </div>
-                                )}
-                            />
+                        {currentStep === 6 && (
+                            <div>
+                               <h2 className="text-2xl font-semibold">Ready to Go!</h2>
+                               <p className="text-muted-foreground mt-2">Here's a summary of your lifestyle. This will be used to calculate your initial carbon footprint. You can change this anytime in your profile.</p>
+                               <Card className="mt-4">
+                                   <CardContent className="pt-6 grid grid-cols-2 gap-4 text-sm">
+                                        <div><strong className="font-medium text-muted-foreground block">Diet</strong> {getValues('diet')}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Household</strong> {getValues('householdSize')} people</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Energy</strong> {getValues('monthlyKwh')} kWh/month</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Shopping</strong> {getValues('shoppingFrequency')}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Renewable?</strong> {getValues('usesRenewable') ? 'Yes' : 'No'}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">AC/Heater?</strong> {getValues('usesAcHeater') ? 'Yes' : 'No'}</div>
+                                        <div className="col-span-2"><strong className="font-medium text-muted-foreground block">Travel</strong> 
+                                            <ul className="list-disc pl-5">
+                                            {Object.entries(getValues('transportModes')).map(([mode, details]) => (
+                                                details && <li key={mode} className="capitalize">{mode}: {details.km_per_week} km/week</li>
+                                            ))}
+                                            </ul>
+                                        </div>
+                                   </CardContent>
+                               </Card>
+                            </div>
                         )}
                     </motion.div>
                 </AnimatePresence>

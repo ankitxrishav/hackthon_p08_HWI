@@ -52,13 +52,35 @@ export interface StreakData {
     icon: LucideIcon;
 }
 
+// Detailed User Profile for Onboarding and Personalization
+export type DietType = 'vegetarian' | 'mixed' | 'meat-heavy';
+export type ShoppingFrequency = 'rarely' | 'monthly' | 'weekly';
+export type TransportMode = 'car' | 'bike' | 'metro' | 'bus' | 'walk' | 'flights';
+
+export interface TransportDetail {
+  km_per_week: number;
+}
+
 export interface UserProfile {
   id?: string;
-  travelMode: string;
-  weeklyDistance: number;
-  diet: string;
+  
+  // Onboarding data
+  transportModes: Partial<Record<TransportMode, TransportDetail>>;
+  diet: DietType;
   monthlyKwh: number;
   usesRenewable: boolean;
-  shoppingFrequency: string;
+  usesAcHeater: boolean;
+  shoppingFrequency: ShoppingFrequency;
   householdSize: number;
+  
+  // Optional detailed fields from onboarding
+  mealsPerDay?: number;
+  eatOutFrequency?: 'rarely' | 'monthly' | 'weekly';
+  monthlySpend?: number;
+
+  // Calculated baseline from onboarding
+  baselineEmissions?: {
+    daily: number;
+    weekly: number;
+  };
 }
