@@ -27,3 +27,9 @@ export interface StatCardData {
   icon: LucideIcon;
   change?: string;
 }
+
+export interface EmissionGoal {
+  current: number;
+  goal: number;
+  label: string;
+}

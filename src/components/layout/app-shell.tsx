@@ -13,7 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Home, PlusCircle } from 'lucide-react';
+import { Leaf, PlusCircle } from 'lucide-react';
 import { Icons } from '../icons';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === '/'} tooltip="Dashboard">
                   <Link href="/">
-                    <Home />
+                    <Leaf />
                     <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>

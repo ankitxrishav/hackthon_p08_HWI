@@ -1,5 +1,5 @@
-import type { DailyEmission, CategoryBreakdown, StatCardData } from '@/types';
-import { Leaf, Zap, Footprints, ShoppingCart } from 'lucide-react';
+import type { DailyEmission, CategoryBreakdown, StatCardData, EmissionGoal } from '@/types';
+import { Leaf, Footprints, Car, Sun, Users } from 'lucide-react';
 
 export function getDailyEmissionData(): DailyEmission[] {
   const data: DailyEmission[] = [];
@@ -41,17 +41,32 @@ export function getStatCards(): StatCardData[] {
     {
       title: 'Top Category',
       value: 'Travel',
-      icon: Zap,
+      icon: Car,
       change: '400 kg CO₂e',
     },
     {
       title: 'Lowest Category',
       value: 'Energy',
-      icon: ShoppingCart,
+      icon: Sun,
       change: '200 kg CO₂e',
+    },
+    {
+      title: 'vs. Global Average',
+      value: '-15%',
+      icon: Users,
+      change: 'Lower than average',
     },
   ];
 }
+
+export function getEmissionGoal(): EmissionGoal {
+  return {
+    current: 820,
+    goal: 1000,
+    label: "This Month's Goal",
+  };
+}
+
 
 export function getMonthlySummaryData() {
   const categoryData = getCategoryBreakdown();
