@@ -51,3 +51,14 @@ export interface StreakData {
     label: string;
     icon: LucideIcon;
 }
+
+export interface UserProfile {
+  id?: string;
+  travelMode: string;
+  weeklyDistance: number;
+  diet: string;
+  monthlyKwh: number;
+  usesRenewable: boolean;
+  shoppingFrequency: string;
+  householdSize: number;
+}

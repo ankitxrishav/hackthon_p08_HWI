@@ -1,6 +1,6 @@
 import { db } from './firebase';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
-import type { Activity, EmissionCategory } from '@/types';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
+import type { Activity, EmissionCategory, UserProfile } from '@/types';
 
 type ActivityLog = {
     category: EmissionCategory;
@@ -59,4 +59,32 @@ export const getTodaysActivities = async (userId: string): Promise<Activity[]> =
     todayEnd.setHours(23, 59, 59, 999);
 
     return getActivitiesForDateRange(userId, todayStart, todayEnd);
+}
+
+
+// New User Profile functions
+export const setUserProfile = async (userId: string, profileData: Omit<UserProfile, 'id'>) => {
+    try {
+        const profileRef = doc(db, 'users', userId, 'profile', 'main');
+        await setDoc(profileRef, profileData);
+    } catch (error) {
+        console.error("Error setting user profile: ", error);
+        throw new Error("Could not save user profile.");
+    }
+}
+
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    try {
+        const profileRef = doc(db, 'users', userId, 'profile', 'main');
+        const docSnap = await getDoc(profileRef);
+
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as UserProfile;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error("Error getting user profile: ", error);
+        throw new Error("Could not retrieve user profile.");
+    }
 }
