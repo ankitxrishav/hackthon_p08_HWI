@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import { animate } from 'framer-motion';
 import type { CategoryBreakdown } from '@/types';
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -15,6 +16,28 @@ interface TodaysEmissionsCardProps {
     breakdown: CategoryBreakdown[];
   };
 }
+
+function Counter({ from, to }: { from: number; to: number }) {
+  const nodeRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return;
+
+    const controls = animate(from, to, {
+      duration: 1,
+      ease: 'easeOut',
+      onUpdate(value) {
+        node.textContent = value.toFixed(1);
+      },
+    });
+
+    return () => controls.stop();
+  }, [from, to]);
+
+  return <span ref={nodeRef} />;
+}
+
 
 export function TodaysEmissionsCard({ data }: TodaysEmissionsCardProps) {
 
@@ -29,7 +52,7 @@ export function TodaysEmissionsCard({ data }: TodaysEmissionsCardProps) {
       <CardHeader>
         <CardDescription>Today's Total Emissions</CardDescription>
         <CardTitle className={`text-6xl font-extrabold tracking-tighter ${getEmissionColor(data.total)}`}>
-          {data.total.toFixed(1)}
+          <Counter from={0} to={data.total} />
           <span className="text-3xl font-medium text-muted-foreground ml-2">kg CO₂e</span>
         </CardTitle>
       </CardHeader>

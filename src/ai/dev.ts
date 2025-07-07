@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/summarize-monthly-emissions.ts';
 import '@/ai/flows/generate-carbon-reduction-tips.ts';
+import '@/ai/flows/calculate-emission.ts';

@@ -25,9 +25,14 @@ import {
   Bike,
   Train,
   Plane,
+  Loader2
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
+import type { CalculateEmissionInput } from '@/ai/flows/calculate-emission';
+import { calculateEmission } from '@/ai/flows/calculate-emission';
 
 type ActivityResult = {
   category: string;
@@ -36,24 +41,89 @@ type ActivityResult = {
 
 export default function AddActivityPage() {
   const [result, setResult] = useState<ActivityResult>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const { toast } = useToast();
 
-  const handleCalculate = (category: string) => {
-    // Dummy calculation
-    const emissionValue = parseFloat((Math.random() * 5).toFixed(2));
-    setResult({ category, value: emissionValue });
+  // State for form inputs
+  const [travelMode, setTravelMode] = useState('car');
+  const [distance, setDistance] = useState('');
+  
+  const [mealType, setMealType] = useState('home');
+  const [dietType, setDietType] = useState('veg');
+
+  const [energyConsumed, setEnergyConsumed] = useState('');
+  const [acHours, setAcHours] = useState('');
+  const [heaterHours, setHeaterHours] = useState('');
+
+  const [productCategory, setProductCategory] = useState('clothing');
+  const [amountSpent, setAmountSpent] = useState('');
+
+
+  const handleCalculate = async (category: CalculateEmissionInput['category']) => {
+    setIsCalculating(true);
+    setResult(null);
+
+    let input: CalculateEmissionInput | null = null;
+
+    try {
+      switch (category) {
+        case 'Travel':
+          if (!distance || parseFloat(distance) <= 0) {
+            throw new Error('Please enter a valid distance.');
+          }
+          input = { category, value: parseFloat(distance), details: { mode: travelMode } };
+          break;
+        case 'Food':
+           input = { category, value: 1, details: { mealType, dietType } }; // value is per meal
+          break;
+        case 'Energy':
+          const energy = parseFloat(energyConsumed) || 0;
+          const ac = parseFloat(acHours) || 0;
+          const heater = parseFloat(heaterHours) || 0;
+          if (energy <= 0 && ac <= 0 && heater <= 0) {
+            throw new Error('Please enter energy consumption or appliance usage.');
+          }
+          input = { category, value: energy, details: { acHours: ac, heaterHours: heater } };
+          break;
+        case 'Shopping':
+          if (!amountSpent || parseFloat(amountSpent) <= 0) {
+            throw new Error('Please enter a valid amount spent.');
+          }
+          input = { category, value: parseFloat(amountSpent), details: { product: productCategory } };
+          break;
+        default:
+          throw new Error('Invalid activity category.');
+      }
+      
+      const { emission } = await calculateEmission(input);
+      setResult({ category, value: parseFloat(emission.toFixed(2)) });
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Calculation Error',
+        description: error.message || 'Could not calculate emissions.',
+      });
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const ActivityResult = ({ result }: { result: ActivityResult }) => {
     if (!result) return null;
 
     return (
-      <div className="mt-6 rounded-lg border bg-green-50 border-green-200 p-4 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mt-6 rounded-lg border bg-green-50 border-green-200 p-4 text-center"
+      >
         <p className="text-sm text-green-700">Estimated Emission:</p>
         <p className="text-2xl font-bold text-primary">
           {result.value} kg CO₂e
         </p>
         <Button size="sm" className="mt-2">Add to Log</Button>
-      </div>
+      </motion.div>
     );
   };
 
@@ -86,7 +156,7 @@ export default function AddActivityPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Mode of Transport</Label>
-                  <RadioGroup defaultValue="car" className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <RadioGroup value={travelMode} onValueChange={setTravelMode} className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Label htmlFor="car" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                         <RadioGroupItem value="car" id="car" className="sr-only" />
                         <Car className="mb-2"/> Car
@@ -107,17 +177,22 @@ export default function AddActivityPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="distance">Distance (km)</Label>
-                  <Input id="distance" type="number" placeholder="e.g., 25" />
+                  <Input id="distance" type="number" placeholder="e.g., 25" value={distance} onChange={(e) => setDistance(e.target.value)} />
                 </div>
-                <Button onClick={() => handleCalculate('Travel')}>Calculate Emission</Button>
-                <ActivityResult result={result} />
+                <Button onClick={() => handleCalculate('Travel')} disabled={isCalculating}>
+                  {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Calculate Emission
+                </Button>
+                <AnimatePresence>
+                  {result && result.category === 'Travel' && <ActivityResult result={result} />}
+                </AnimatePresence>
               </div>
             </TabsContent>
             <TabsContent value="food" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Meal Type</Label>
-                    <RadioGroup defaultValue="home" className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <RadioGroup value={mealType} onValueChange={setMealType} className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <Label htmlFor="home" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                         <RadioGroupItem value="home" id="home" className="sr-only" />
                          Home-cooked
@@ -134,40 +209,59 @@ export default function AddActivityPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Diet Type</Label>
-                  <div className='flex gap-2'>
-                    <Badge variant='secondary'>Veg</Badge>
-                    <Badge variant='outline'>Non-Veg</Badge>
-                     <Badge variant='outline'>Processed</Badge>
-                  </div>
+                  <RadioGroup value={dietType} onValueChange={setDietType} className='flex gap-2'>
+                      <Label htmlFor="veg" className={cn("rounded-full border px-3 py-1 cursor-pointer", dietType === 'veg' ? 'bg-secondary text-secondary-foreground border-transparent' : 'bg-transparent')}>
+                        <RadioGroupItem value="veg" id="veg" className="sr-only" />
+                         Veg
+                      </Label>
+                       <Label htmlFor="non-veg" className={cn("rounded-full border px-3 py-1 cursor-pointer", dietType === 'non-veg' ? 'bg-secondary text-secondary-foreground border-transparent' : 'bg-transparent')}>
+                        <RadioGroupItem value="non-veg" id="non-veg" className="sr-only" />
+                         Non-Veg
+                      </Label>
+                       <Label htmlFor="processed" className={cn("rounded-full border px-3 py-1 cursor-pointer", dietType === 'processed' ? 'bg-secondary text-secondary-foreground border-transparent' : 'bg-transparent')}>
+                        <RadioGroupItem value="processed" id="processed" className="sr-only" />
+                         Processed
+                      </Label>
+                  </RadioGroup>
                 </div>
-                <Button onClick={() => handleCalculate('Food')}>Calculate Emission</Button>
-                 <ActivityResult result={result} />
+                <Button onClick={() => handleCalculate('Food')} disabled={isCalculating}>
+                   {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Calculate Emission
+                </Button>
+                <AnimatePresence>
+                  {result && result.category === 'Food' && <ActivityResult result={result} />}
+                </AnimatePresence>
               </div>
             </TabsContent>
              <TabsContent value="energy" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="appliance">Electricity Consumed (kWh)</Label>
-                  <Input id="appliance" type="number" placeholder="e.g., 5" />
+                  <Input id="appliance" type="number" placeholder="e.g., 5" value={energyConsumed} onChange={e => setEnergyConsumed(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Or Hours of Usage for Major Appliances</Label>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                      <Label htmlFor="ac-hours" className='font-normal'>Air Conditioner</Label>
-                     <Input id="ac-hours" type="number" placeholder="e.g., 3 hours" />
+                     <Input id="ac-hours" type="number" placeholder="e.g., 3 hours" value={acHours} onChange={e => setAcHours(e.target.value)} />
                      <Label htmlFor="heater-hours" className='font-normal'>Heater</Label>
-                     <Input id="heater-hours" type="number" placeholder="e.g., 1 hour" />
+                     <Input id="heater-hours" type="number" placeholder="e.g., 1 hour" value={heaterHours} onChange={e => setHeaterHours(e.target.value)} />
                   </div>
                 </div>
-                <Button onClick={() => handleCalculate('Energy')}>Calculate Emission</Button>
-                 <ActivityResult result={result} />
+                <Button onClick={() => handleCalculate('Energy')} disabled={isCalculating}>
+                  {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Calculate Emission
+                </Button>
+                <AnimatePresence>
+                  {result && result.category === 'Energy' && <ActivityResult result={result} />}
+                </AnimatePresence>
               </div>
             </TabsContent>
             <TabsContent value="shopping" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Product Category</Label>
-                  <RadioGroup defaultValue="clothing" className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <RadioGroup value={productCategory} onValueChange={setProductCategory} className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <Label htmlFor="clothing" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                         <RadioGroupItem value="clothing" id="clothing" className="sr-only" />
                          Clothing
@@ -184,10 +278,15 @@ export default function AddActivityPage() {
                 </div>
                  <div className="space-y-2">
                   <Label htmlFor="price">Amount Spent ($)</Label>
-                  <Input id="price" type="number" placeholder="e.g., 50" />
+                  <Input id="price" type="number" placeholder="e.g., 50" value={amountSpent} onChange={e => setAmountSpent(e.target.value)} />
                 </div>
-                <Button onClick={() => handleCalculate('Shopping')}>Calculate Emission</Button>
-                 <ActivityResult result={result} />
+                <Button onClick={() => handleCalculate('Shopping')} disabled={isCalculating}>
+                  {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Calculate Emission
+                </Button>
+                 <AnimatePresence>
+                  {result && result.category === 'Shopping' && <ActivityResult result={result} />}
+                </AnimatePresence>
               </div>
             </TabsContent>
           </Tabs>
