@@ -10,6 +10,12 @@ export interface Activity {
   date: string; // ISO string
 }
 
+export type CalculateEmissionInput = {
+    category: EmissionCategory;
+    value: number;
+    details?: Record<string, any>;
+}
+
 export interface WeeklyEmission {
   day: string;
   emissions: number;

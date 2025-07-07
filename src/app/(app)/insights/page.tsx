@@ -1,51 +1,108 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import * as DataService from '@/lib/data';
+import type { WeeklyEmission, CategoryBreakdown, EmissionGoal, ComparisonData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Trophy, PieChart, TrendingUp, Target } from 'lucide-react';
+import { Trophy, PieChart, TrendingUp, Target } from 'lucide-react';
 import { WeeklyEmissionsChart } from '@/components/dashboard/weekly-emissions-chart';
 import { CategoryBreakdownChart } from '@/components/dashboard/category-breakdown-chart';
-import {
-  getWeeklyEmissionData,
-  getCategoryBreakdown,
-  getEmissionGoal,
-  getComparisonData
-} from '@/lib/data';
 import { EmissionGoalProgress } from '@/components/dashboard/emission-goal-progress';
 import { ComparisonCard } from '@/components/dashboard/comparison-card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const achievements = [
     { icon: Trophy, title: "Eco-Beginner", description: "Logged your first activity.", color: "text-amber-500" },
     { icon: Trophy, title: "Low Meat Week", description: "Completed a week with low meat consumption.", color: "text-amber-500" },
     { icon: Trophy, title: "Commuter Champ", description: "Walked 5 days in a row.", color: "text-slate-400" },
     { icon: Trophy, title: "Energy Saver", description: "Reduced energy use by 10%.", color: "text-slate-400" },
-]
+];
+
+const InsightsSkeleton = () => (
+  <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+    <div className="grid gap-6 md:grid-cols-2">
+      <Skeleton className="h-[350px] w-full" />
+      <Skeleton className="h-[350px] w-full" />
+    </div>
+    <Skeleton className="h-[200px] w-full" />
+    <div className="grid gap-6 md:grid-cols-2">
+      <Skeleton className="h-[125px] w-full" />
+      <Skeleton className="h-[125px] w-full" />
+    </div>
+    <Skeleton className="h-[200px] w-full" />
+  </div>
+);
 
 export default function InsightsPage() {
-    const weeklyData = getWeeklyEmissionData();
-    const categoryData = getCategoryBreakdown();
-    const dailyGoalData = getEmissionGoal();
-    const weeklyGoalData = {...dailyGoalData, current: 85, goal: 140, label: "Weekly Goal" };
-    const comparisonData = getComparisonData();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryBreakdown[]>([]);
+  const [dailyGoalData, setDailyGoalData] = useState<EmissionGoal | null>(null);
+  const [comparisonData, setComparisonData] = useState<Record<string, ComparisonData> | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const fetchData = async () => {
+        setLoading(true);
+        try {
+          const [
+            fetchedWeekly,
+            fetchedTodays,
+            fetchedGoal,
+            fetchedComparison
+          ] = await Promise.all([
+            DataService.getWeeklyEmissionData(user.uid),
+            DataService.getTodaysBreakdown(user.uid),
+            DataService.getEmissionGoal(user.uid),
+            DataService.getComparisonData(),
+          ]);
+          setWeeklyData(fetchedWeekly);
+          setCategoryData(fetchedTodays.breakdown);
+          setDailyGoalData(fetchedGoal);
+          setComparisonData(fetchedComparison);
+        } catch (error) {
+          console.error("Failed to fetch insights data:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
+    } else {
+        setLoading(false);
+    }
+  }, [user]);
+
+  if (loading) {
+    return <InsightsSkeleton />;
+  }
+
+  if (!user || !dailyGoalData || !comparisonData) {
+      return <div className="p-8">Could not load insights data. Please try again later.</div>
+  }
+
+  const weeklyGoalData = {
+    ...dailyGoalData, 
+    current: parseFloat(weeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
+    goal: dailyGoalData.goal * 7, 
+    label: "Weekly Goal" 
+  };
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className='flex items-center gap-2'><PieChart className='text-primary' /> Emission Sources</CardTitle>
-            <CardDescription>Breakdown of your emissions by category.</CardDescription>
+            <CardTitle className='flex items-center gap-2'><PieChart className='text-primary' /> Todays Emission Sources</CardTitle>
+            <CardDescription>Breakdown of your emissions by category for today.</CardDescription>
           </CardHeader>
           <CardContent className="h-[250px]">
             <CategoryBreakdownChart data={categoryData} />
           </CardContent>
         </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle className='flex items-center gap-2'><TrendingUp className='text-primary' /> Weekly Trend</CardTitle>
-                 <CardDescription>Your carbon emissions over the last 7 days.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <WeeklyEmissionsChart data={weeklyData} />
-            </CardContent>
-        </Card>
+        <WeeklyEmissionsChart data={weeklyData} />
       </div>
 
        <Card>

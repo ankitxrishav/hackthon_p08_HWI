@@ -25,14 +25,17 @@ import {
   Bike,
   Train,
   Plane,
-  Loader2
+  Loader2,
+  CheckCircle
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Badge } from '@/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import type { CalculateEmissionInput } from '@/ai/flows/calculate-emission';
+import type { CalculateEmissionInput, EmissionCategory } from '@/types';
 import { calculateEmission } from '@/ai/flows/calculate-emission';
+import { useAuth } from '@/hooks/use-auth';
+import { addActivityLog } from '@/lib/firestore';
+import { cn } from '@/lib/utils';
 
 type ActivityResult = {
   category: string;
@@ -40,11 +43,12 @@ type ActivityResult = {
 } | null;
 
 export default function AddActivityPage() {
+  const { user } = useAuth();
   const [result, setResult] = useState<ActivityResult>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isLogging, setIsLogging] = useState(false);
   const { toast } = useToast();
 
-  // State for form inputs
   const [travelMode, setTravelMode] = useState('car');
   const [distance, setDistance] = useState('');
   
@@ -58,38 +62,36 @@ export default function AddActivityPage() {
   const [productCategory, setProductCategory] = useState('clothing');
   const [amountSpent, setAmountSpent] = useState('');
 
-
   const handleCalculate = async (category: CalculateEmissionInput['category']) => {
     setIsCalculating(true);
     setResult(null);
 
     let input: CalculateEmissionInput | null = null;
+    let description = '';
 
     try {
       switch (category) {
         case 'Travel':
-          if (!distance || parseFloat(distance) <= 0) {
-            throw new Error('Please enter a valid distance.');
-          }
+          if (!distance || parseFloat(distance) <= 0) throw new Error('Please enter a valid distance.');
           input = { category, value: parseFloat(distance), details: { mode: travelMode } };
+          description = `${travelMode.charAt(0).toUpperCase() + travelMode.slice(1)} ride for ${distance} km`;
           break;
         case 'Food':
-           input = { category, value: 1, details: { mealType, dietType } }; // value is per meal
+           input = { category, value: 1, details: { mealType, dietType } };
+           description = `${dietType} meal (${mealType})`;
           break;
         case 'Energy':
           const energy = parseFloat(energyConsumed) || 0;
           const ac = parseFloat(acHours) || 0;
           const heater = parseFloat(heaterHours) || 0;
-          if (energy <= 0 && ac <= 0 && heater <= 0) {
-            throw new Error('Please enter energy consumption or appliance usage.');
-          }
+          if (energy <= 0 && ac <= 0 && heater <= 0) throw new Error('Please enter energy consumption or appliance usage.');
           input = { category, value: energy, details: { acHours: ac, heaterHours: heater } };
+          description = `Energy consumption`;
           break;
         case 'Shopping':
-          if (!amountSpent || parseFloat(amountSpent) <= 0) {
-            throw new Error('Please enter a valid amount spent.');
-          }
+          if (!amountSpent || parseFloat(amountSpent) <= 0) throw new Error('Please enter a valid amount spent.');
           input = { category, value: parseFloat(amountSpent), details: { product: productCategory } };
+          description = `Shopping for ${productCategory}`;
           break;
         default:
           throw new Error('Invalid activity category.');
@@ -109,20 +111,62 @@ export default function AddActivityPage() {
     }
   };
 
-  const ActivityResult = ({ result }: { result: ActivityResult }) => {
+  const handleLogActivity = async () => {
+    if (!result || !user) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No result to log or you are not signed in.',
+      });
+      return;
+    }
+
+    setIsLogging(true);
+    try {
+      await addActivityLog(user.uid, {
+        category: result.category as EmissionCategory,
+        emissions: result.value,
+        description: `Logged ${result.category} activity`, // This could be more detailed
+        date: new Date().toISOString(),
+      });
+      toast({
+        title: 'Success!',
+        description: 'Your activity has been logged.',
+        className: 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700'
+      });
+      setResult(null); // Clear result after logging
+    } catch (error: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Logging Error',
+        description: error.message || 'Could not log your activity.',
+      });
+    } finally {
+      setIsLogging(false);
+    }
+  };
+
+  const ActivityResultDisplay = ({ result, onLog, isLogging }: { result: ActivityResult, onLog: () => void, isLogging: boolean }) => {
     if (!result) return null;
 
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mt-6 rounded-lg border bg-green-50 border-green-200 p-4 text-center"
+        className="mt-6 rounded-lg border bg-green-50 border-green-200 p-4 text-center dark:bg-green-900/20 dark:border-green-700/30"
       >
-        <p className="text-sm text-green-700">Estimated Emission:</p>
+        <p className="text-sm text-green-700 dark:text-green-300">Estimated Emission:</p>
         <p className="text-2xl font-bold text-primary">
           {result.value} kg CO₂e
         </p>
-        <Button size="sm" className="mt-2">Add to Log</Button>
+        <Button size="sm" className="mt-2" onClick={onLog} disabled={isLogging}>
+          {isLogging ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCircle className="mr-2 h-4 w-4" />
+          )}
+          Add to Log
+        </Button>
       </motion.div>
     );
   };
@@ -139,24 +183,18 @@ export default function AddActivityPage() {
         <CardContent>
           <Tabs defaultValue="travel" className="w-full" onValueChange={() => setResult(null)}>
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="travel">
-                <Car className="mr-2 h-4 w-4" /> Travel
-              </TabsTrigger>
-              <TabsTrigger value="food">
-                <Utensils className="mr-2 h-4 w-4" /> Food
-              </TabsTrigger>
-              <TabsTrigger value="energy">
-                <Bolt className="mr-2 h-4 w-4" /> Energy
-              </TabsTrigger>
-              <TabsTrigger value="shopping">
-                <ShoppingCart className="mr-2 h-4 w-4" /> Shopping
-              </TabsTrigger>
+              <TabsTrigger value="travel"><Car className="mr-2 h-4 w-4" /> Travel</TabsTrigger>
+              <TabsTrigger value="food"><Utensils className="mr-2 h-4 w-4" /> Food</TabsTrigger>
+              <TabsTrigger value="energy"><Bolt className="mr-2 h-4 w-4" /> Energy</TabsTrigger>
+              <TabsTrigger value="shopping"><ShoppingCart className="mr-2 h-4 w-4" /> Shopping</TabsTrigger>
             </TabsList>
+
+            {/* Travel Tab */}
             <TabsContent value="travel" className="mt-6">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Mode of Transport</Label>
-                  <RadioGroup value={travelMode} onValueChange={setTravelMode} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                   <RadioGroup value={travelMode} onValueChange={setTravelMode} className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Label htmlFor="car" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                         <RadioGroupItem value="car" id="car" className="sr-only" />
                         <Car className="mb-2"/> Car
@@ -184,13 +222,15 @@ export default function AddActivityPage() {
                   Calculate Emission
                 </Button>
                 <AnimatePresence>
-                  {result && result.category === 'Travel' && <ActivityResult result={result} />}
+                  {result && result.category === 'Travel' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
                 </AnimatePresence>
               </div>
             </TabsContent>
+
+            {/* Food Tab */}
             <TabsContent value="food" className="mt-6">
                <div className="space-y-4">
-                <div className="space-y-2">
+                 <div className="space-y-2">
                   <Label>Meal Type</Label>
                     <RadioGroup value={mealType} onValueChange={setMealType} className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <Label htmlFor="home" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
@@ -229,10 +269,12 @@ export default function AddActivityPage() {
                   Calculate Emission
                 </Button>
                 <AnimatePresence>
-                  {result && result.category === 'Food' && <ActivityResult result={result} />}
+                  {result && result.category === 'Food' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
                 </AnimatePresence>
               </div>
             </TabsContent>
+
+            {/* Energy Tab */}
              <TabsContent value="energy" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
@@ -253,10 +295,12 @@ export default function AddActivityPage() {
                   Calculate Emission
                 </Button>
                 <AnimatePresence>
-                  {result && result.category === 'Energy' && <ActivityResult result={result} />}
+                  {result && result.category === 'Energy' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
                 </AnimatePresence>
               </div>
             </TabsContent>
+
+            {/* Shopping Tab */}
             <TabsContent value="shopping" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
@@ -285,7 +329,7 @@ export default function AddActivityPage() {
                   Calculate Emission
                 </Button>
                  <AnimatePresence>
-                  {result && result.category === 'Shopping' && <ActivityResult result={result} />}
+                  {result && result.category === 'Shopping' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
                 </AnimatePresence>
               </div>
             </TabsContent>
