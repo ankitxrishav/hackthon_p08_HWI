@@ -39,23 +39,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <Link href="/" legacyBehavior passHref>
-                  <SidebarMenuButton isActive={pathname === '/'} tooltip="Dashboard">
+                <SidebarMenuButton asChild isActive={pathname === '/'} tooltip="Dashboard">
+                  <Link href="/">
                     <Home />
                     <span>Dashboard</span>
-                  </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <Link href="/add-activity" legacyBehavior passHref>
-                  <SidebarMenuButton
-                    isActive={pathname === '/add-activity'}
-                    tooltip="Add Activity"
-                  >
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === '/add-activity'}
+                  tooltip="Add Activity"
+                >
+                  <Link href="/add-activity">
                     <PlusCircle />
                     <span>Add Activity</span>
-                  </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
