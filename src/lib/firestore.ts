@@ -47,7 +47,9 @@ export const getActivitiesForDateRange = async (userId: string, startDate: Date,
         return activities;
     } catch (error) {
         console.error("Error getting documents: ", error);
-        throw new Error("Could not retrieve activities.");
+        // Re-throw the original error object to preserve its code (e.g., 'permission-denied')
+        // for specific handling in the UI components.
+        throw error;
     }
 }
 
