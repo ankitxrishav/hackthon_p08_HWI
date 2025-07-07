@@ -4,7 +4,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getUserProfile } from '@/lib/firestore';
 
 const AppLayoutSkeleton = () => (
    <div className="flex h-screen w-full flex-col bg-background/80">
@@ -25,7 +24,6 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isVerified, setIsVerified] = useState(false);
@@ -39,26 +37,18 @@ export default function AppLayout({
       return;
     }
 
-    // User is logged in, check for profile
-    getUserProfile(user.uid)
-      .then((profile) => {
-        if (!profile && pathname !== '/onboarding') {
-          // No profile and not on the onboarding page, redirect
-          router.push('/onboarding');
-        } else {
-          // User has a profile OR is on the onboarding page, allow access
-          setIsVerified(true);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to verify user profile", err);
-        // Handle error, maybe redirect to an error page or show a toast
-        router.push('/');
-      });
+    // New logic: Check if onboarding has been completed for this session.
+    // If not, redirect to the onboarding page.
+    const onboardingCompleteInSession = sessionStorage.getItem('onboardingComplete');
+    if (!onboardingCompleteInSession) {
+      router.push('/onboarding');
+    } else {
+      // Onboarding has been completed in this session, allow access to the app.
+      setIsVerified(true);
+    }
+  }, [user, authLoading, router]);
 
-  }, [user, authLoading, pathname, router]);
-
-  // Show a skeleton while we verify the user's auth state and profile status
+  // Show a skeleton while we verify the user's auth state and session status
   if (!isVerified) {
     return <AppLayoutSkeleton />;
   }

@@ -84,6 +84,10 @@ export default function OnboardingPage() {
           const baselineEmissions = calculateBaselineEmissions(data);
           const profileData: UserProfile = { ...data, baselineEmissions };
           await setUserProfile(user.uid, profileData);
+          
+          // Set a flag in session storage to indicate onboarding is complete for this session
+          sessionStorage.setItem('onboardingComplete', 'true');
+
           toast({ title: 'Success!', description: 'Your carbon profile has been created.' });
           router.push('/dashboard');
         } catch (error) {
@@ -222,8 +226,7 @@ export default function OnboardingPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                )}
-                            />
+                                )}/>
                         )}
                         {currentStep === 6 && (
                             <div>
