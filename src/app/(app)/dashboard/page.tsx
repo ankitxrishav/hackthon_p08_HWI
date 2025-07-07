@@ -14,6 +14,7 @@ import { StreakCard } from '@/components/dashboard/streak-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { format } from 'date-fns';
 
 
 const DashboardSkeleton = () => (
@@ -50,7 +51,7 @@ export default function DashboardPage() {
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   
   // State for data from the user's PROFILE (survey)
-  const [baselineData, setBaselineData] = useState<{ dailyTotal: number; breakdown: CategoryBreakdown[]; weeklyChartData: WeeklyEmission[] } | null>(null);
+  const [baselineData, setBaselineData] = useState<{ dailyTotal: number; breakdown: CategoryBreakdown[]; weeklyChartData: WeeklyEmission[], updatedAt: string | null } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -79,7 +80,7 @@ export default function DashboardPage() {
           setBaselineData(fetchedBaseline);
         } catch (err: any) {
           console.error("Failed to fetch dashboard data:", err);
-          if (err.code === 'permission-denied') {
+          if (err.code === 'permission-denied' || err.message.includes('permission-denied')) {
             setError("You have a permissions error in your database. Please check your Firestore security rules in the Firebase Console.");
           } else {
             setError("Could not load dashboard data. Please try again later.");
@@ -111,7 +112,7 @@ export default function DashboardPage() {
   }
   
   if (!user || !goalData || !comparisonData || !streakData || !baselineData) {
-      return <div className='p-8 text-center'>Could not load dashboard data. Please try again later.</div>
+      return <div className='p-8 text-center'>Could not load dashboard data. Please complete your profile to get started.</div>
   }
   
   // This is based on ACTUAL activities and is used for the goal progress bar
@@ -136,7 +137,14 @@ export default function DashboardPage() {
              <Card className='h-full'>
                 <CardHeader>
                     <CardTitle>Daily Baseline Breakdown</CardTitle>
-                    <CardDescription>Your estimated daily footprint from your profile.</CardDescription>
+                    <CardDescription>
+                        Your estimated daily footprint from your profile.
+                        {baselineData.updatedAt && (
+                           <span className="block text-xs mt-1">
+                                Last updated: {format(new Date(baselineData.updatedAt), 'PPP')}
+                           </span>
+                        )}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className='h-[300px]'>
                     <CategoryBreakdownChart data={baselineData.breakdown} />

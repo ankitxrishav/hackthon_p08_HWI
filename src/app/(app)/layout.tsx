@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getUserProfile } from '@/lib/firestore';
 
 const AppLayoutSkeleton = () => (
    <div className="flex h-screen w-full flex-col bg-background/80">
@@ -40,27 +41,44 @@ export default function AppLayout({
       router.push('/');
       return;
     }
-
-    // At this point, user is authenticated.
-    // Check session storage to see if onboarding is complete for this session.
-    // This enforces the survey on every new login.
-    const onboardingCompleteInSession = sessionStorage.getItem('onboardingComplete');
     
-    // If user is on the onboarding page, let them be. This prevents redirect loops.
+    // If the user is on the onboarding page, let them be. This prevents redirect loops
+    // for new users who are sent there.
     if (pathname === '/onboarding') {
       setIsVerified(true);
       return;
     }
-    
-    // If onboarding is NOT complete for this session, redirect them to it.
-    if (!onboardingCompleteInSession) {
-      router.push('/onboarding');
-      return;
+
+    // Check if we've already determined the user's status for this session.
+    const sessionVerified = sessionStorage.getItem('userStatusVerified');
+    if (sessionVerified) {
+        setIsVerified(true);
+        return;
     }
 
-    // If we've reached here, user is logged in and onboarding is complete for the session.
-    // They can see the page they requested.
-    setIsVerified(true);
+    // This is the first check for this session.
+    // Determine if the user is new or returning by checking for a profile in Firestore.
+    const checkUserStatus = async () => {
+        try {
+            const profile = await getUserProfile(user.uid);
+            if (!profile) {
+                // No profile found, this is a new user. Redirect to onboarding.
+                router.push('/onboarding');
+            } else {
+                // Profile found, this is a returning user.
+                // Mark as verified for this session and allow them to proceed.
+                sessionStorage.setItem('userStatusVerified', 'true');
+                setIsVerified(true);
+            }
+        } catch (error) {
+            console.error("Error checking user profile status:", error);
+            // In case of error, assume they are verified to avoid getting stuck.
+            // The dashboard will show a specific error if it can't load data.
+            setIsVerified(true);
+        }
+    };
+
+    checkUserStatus();
     
   }, [user, authLoading, router, pathname]);
 

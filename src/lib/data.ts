@@ -127,6 +127,7 @@ export async function getBaselineProfileData(userId: string) {
       dailyTotal: 0,
       breakdown: [],
       weeklyChartData: emptyDays,
+      updatedAt: null,
     };
   }
   
@@ -145,5 +146,6 @@ export async function getBaselineProfileData(userId: string) {
     dailyTotal: dailyAverage,
     breakdown: breakdownData.breakdown,
     weeklyChartData,
+    updatedAt: profile.updatedAt || null,
   };
 }

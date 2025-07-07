@@ -123,7 +123,7 @@ export default function OnboardingPage() {
           
           await setUserProfile(user.uid, profileData);
           
-          sessionStorage.setItem('onboardingComplete', 'true');
+          sessionStorage.setItem('userStatusVerified', 'true');
 
           toast({ title: 'Success!', description: `Your carbon profile has been ${isUpdateMode ? 'updated' : 'created'}.` });
           router.push('/dashboard');
@@ -145,7 +145,7 @@ export default function OnboardingPage() {
             <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <CurrentIcon className="size-5" />
             </div>
-            <CardTitle>{steps[currentStep-1].title}</CardTitle>
+            <CardTitle>{isUpdateMode && currentStep === 1 ? 'Update Profile' : steps[currentStep-1].title}</CardTitle>
           </div>
         </CardHeader>
 
@@ -169,7 +169,7 @@ export default function OnboardingPage() {
                                 </>
                                 ) : (
                                 <>
-                                    <h2 className="text-2xl font-semibold">Welcome to CarbonWise!</h2>
+                                    <h2 className="text-2xl font-semibold">Welcome to Susthira!</h2>
                                     <p className="text-muted-foreground mt-2">Let’s understand your lifestyle to build your personalized carbon profile. This will help us give you accurate insights and recommendations.</p>
                                 </>
                                 )}
