@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller, type SubmitHandler, type FieldValues } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { Car, CookingPot, Zap, ShoppingCart, Users, Leaf, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { setUserProfile } from '@/lib/firestore';
+import { setUserProfile, getUserProfile } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { UserProfile, TransportMode, TransportDetail } from '@/types';
@@ -49,8 +49,9 @@ export default function OnboardingPage() {
     const { toast } = useToast();
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUpdateMode, setIsUpdateMode] = useState(false);
     
-    const { control, trigger, handleSubmit, watch, getValues } = useForm<UserProfile>({
+    const { control, trigger, handleSubmit, watch, getValues, reset } = useForm<UserProfile>({
         defaultValues: {
             transportModes: { car: { km_per_week: 50 } },
             diet: 'mixed',
@@ -62,6 +63,19 @@ export default function OnboardingPage() {
             mealsPerDay: 3,
         }
     });
+
+    useEffect(() => {
+        const checkForProfile = async () => {
+            if (user?.uid) {
+                const existingProfile = await getUserProfile(user.uid);
+                if (existingProfile) {
+                    setIsUpdateMode(true);
+                    reset(existingProfile);
+                }
+            }
+        };
+        checkForProfile();
+    }, [user, reset]);
 
     const formValues = watch();
 
@@ -82,7 +96,7 @@ export default function OnboardingPage() {
         }
         setIsLoading(true);
         try {
-          const cleanedTransportModes = Object.entries(data.transportModes).reduce((acc, [key, value]) => {
+          const cleanedTransportModes = Object.entries(data.transportModes || {}).reduce((acc, [key, value]) => {
             if (value !== undefined) {
               acc[key as TransportMode] = value;
             }
@@ -97,7 +111,7 @@ export default function OnboardingPage() {
           
           sessionStorage.setItem('onboardingComplete', 'true');
 
-          toast({ title: 'Success!', description: 'Your carbon profile has been created.' });
+          toast({ title: 'Success!', description: `Your carbon profile has been ${isUpdateMode ? 'updated' : 'created'}.` });
           router.push('/dashboard');
         } catch (error) {
           toast({ variant: 'destructive', title: 'Error', description: 'Could not save your profile.' });
@@ -134,8 +148,17 @@ export default function OnboardingPage() {
                     >
                         {currentStep === 1 && (
                             <div>
-                                <h2 className="text-2xl font-semibold">Welcome to CarbonWise!</h2>
-                                <p className="text-muted-foreground mt-2">Let’s understand your lifestyle to build your personalized carbon profile. This will help us give you accurate insights and recommendations.</p>
+                                {isUpdateMode ? (
+                                <>
+                                    <h2 className="text-2xl font-semibold">Welcome Back!</h2>
+                                    <p className="text-muted-foreground mt-2">Let’s update your carbon profile to ensure your insights are accurate. Please review and adjust your lifestyle details below.</p>
+                                </>
+                                ) : (
+                                <>
+                                    <h2 className="text-2xl font-semibold">Welcome to CarbonWise!</h2>
+                                    <p className="text-muted-foreground mt-2">Let’s understand your lifestyle to build your personalized carbon profile. This will help us give you accurate insights and recommendations.</p>
+                                </>
+                                )}
                             </div>
                         )}
                         {currentStep === 2 && (
@@ -154,7 +177,7 @@ export default function OnboardingPage() {
                                               <Switch id={mode} checked={!!field.value} onCheckedChange={(checked) => field.onChange(checked ? { km_per_week: 0 } : undefined)} />
                                               <Label htmlFor={mode} className="capitalize text-base">{mode}</Label>
                                             </div>
-                                            {field.value && <Input type="number" placeholder='km/week' value={field.value.km_per_week} onChange={e => field.onChange({km_per_week: parseInt(e.target.value, 10) || 0})} />}
+                                            {field.value && <Input type="number" placeholder='km/week' value={field.value.km_per_week || 0} onChange={e => field.onChange({km_per_week: parseInt(e.target.value, 10) || 0})} />}
                                           </div>
                                         )}
                                     />
@@ -170,7 +193,7 @@ export default function OnboardingPage() {
                                     render={({ field }) => (
                                         <div className="space-y-2">
                                             <Label>What best describes your diet?</Label>
-                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid grid-cols-1 gap-2">
+                                            <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-1 gap-2">
                                                 <Label className="flex items-center justify-start rounded-md border p-4 cursor-pointer peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                                                     <RadioGroupItem value="vegetarian" id="veg" className="peer" /> <span className="ml-4">🥗 Vegetarian</span>
                                                 </Label>
@@ -190,7 +213,7 @@ export default function OnboardingPage() {
                                         render={({ field }) => (
                                             <div className="space-y-2">
                                                 <Label htmlFor="meals">Average meals per day</Label>
-                                                <Input id="meals" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                                                <Input id="meals" type="number" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
                                             </div>
                                         )}
                                     />
@@ -200,7 +223,7 @@ export default function OnboardingPage() {
                                         render={({ field }) => (
                                             <div className="space-y-2">
                                                 <Label htmlFor="household">Number of people in household</Label>
-                                                <Input id="household" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                                                <Input id="household" type="number" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
                                             </div>
                                         )}
                                     />
@@ -212,7 +235,7 @@ export default function OnboardingPage() {
                                 <Controller name="monthlyKwh" control={control} render={({ field }) => (
                                     <div className="space-y-2">
                                         <Label htmlFor="energy">Monthly electricity use (kWh)</Label>
-                                        <Input id="energy" type="number" placeholder="e.g., 300" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                        <Input id="energy" type="number" placeholder="e.g., 300" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                                     </div>
                                 )}/>
                                 <Controller name="usesRenewable" control={control} render={({ field }) => (
@@ -236,7 +259,7 @@ export default function OnboardingPage() {
                                 render={({ field }) => (
                                     <div className="space-y-2">
                                         <Label>Monthly spend on non-essentials (fashion, electronics) (₹)</Label>
-                                        <Input type="number" placeholder="e.g., 2500" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                        <Input type="number" placeholder="e.g., 2500" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                                     </div>
                                 )}/>
                         )}
@@ -272,11 +295,11 @@ export default function OnboardingPage() {
                 <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
             ) : <div />}
             {currentStep < steps.length ? (
-                <Button type="button" onClick={handleNext}>Next</Button>
+                <Button type="button" onClick={handleNext}>{currentStep === 1 ? 'Get Started' : 'Next'}</Button>
             ) : (
                 <Button type="submit" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Create My Carbon Profile
+                    {isUpdateMode ? 'Update My Carbon Profile' : 'Create My Carbon Profile'}
                 </Button>
             )}
             </CardFooter>
