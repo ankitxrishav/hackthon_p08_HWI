@@ -8,13 +8,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getUserProfile } from '@/lib/firestore';
 
 const AppLayoutSkeleton = () => (
-  <div className="flex h-screen w-full">
-    <Skeleton className="hidden md:block w-64 h-full" />
+   <div className="flex h-screen w-full bg-background/80">
+    <div className="hidden md:flex flex-col w-64 h-full p-2">
+       <Skeleton className="h-14 w-full mb-4" />
+       <div className='space-y-2'>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+       </div>
+    </div>
     <div className="flex-1 flex flex-col">
-       <Skeleton className="h-16 w-full border-b" />
-       <div className="flex-1 p-8 space-y-4">
+       <Skeleton className="h-16 w-full" />
+       <div className="flex-1 p-4 md:p-8 space-y-4">
          <Skeleton className="h-32 w-full" />
-         <Skeleton className="h-64 w-full" />
+         <div className='grid md:grid-cols-2 gap-4'>
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+         </div>
        </div>
     </div>
   </div>
@@ -73,7 +83,7 @@ export default function AppLayout({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="flex-1 pb-16 md:pb-0"
+          className="flex-1 pb-24 md:pb-0" // Add padding to bottom to avoid overlap with mobile nav
         >
           {children}
         </motion.main>

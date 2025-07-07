@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 
 const navItems = [
@@ -78,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarContent>
         </Sidebar>
         <SidebarInset>
-             <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:px-6">
+             <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border/20 bg-background/70 backdrop-blur-lg px-4 sm:px-6">
                 <SidebarTrigger className="md:hidden" />
                 <h1 className="text-lg font-semibold md:text-xl">
                   {getGreeting()}
@@ -115,20 +116,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </header>
           {children}
           {/* Mobile Bottom Nav */}
-            <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t">
+            <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 h-16 rounded-2xl bg-background/70 backdrop-blur-lg border border-white/20 shadow-lg">
                 <div className="grid h-full grid-cols-5 mx-auto">
                     {navItems.map((item) => {
                         const isActive = pathname.startsWith(item.href);
                         return (
-                             <Link key={item.href} href={item.href} className={cn("inline-flex flex-col items-center justify-center px-5 hover:bg-muted group", isActive ? "text-primary" : "text-muted-foreground")}>
-                                <item.icon className="size-5 mb-1" />
-                                <span className="text-xs">{item.label}</span>
+                             <Link key={item.href} href={item.href} className={cn("inline-flex flex-col items-center justify-center p-2 hover:bg-muted/50 rounded-lg group transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
+                                <item.icon className="size-6 mb-1 transition-transform group-hover:scale-110" />
+                                 {isActive && <motion.span layoutId="active-pill" className='absolute bottom-1 h-1 w-6 rounded-full bg-primary' />}
                              </Link>
                         )
                     })}
-                    <Link href="/profile" className={cn("inline-flex flex-col items-center justify-center px-5 hover:bg-muted group", pathname.startsWith('/profile') ? "text-primary" : "text-muted-foreground")}>
-                        <User className="size-5 mb-1" />
-                        <span className="text-xs">Profile</span>
+                     <Link href="/profile" className={cn("inline-flex flex-col items-center justify-center p-2 hover:bg-muted/50 rounded-lg group transition-colors", pathname.startsWith('/profile') ? "text-primary" : "text-muted-foreground")}>
+                        <User className="size-6 mb-1 transition-transform group-hover:scale-110" />
+                         {pathname.startsWith('/profile') && <motion.span layoutId="active-pill" className='absolute bottom-1 h-1 w-6 rounded-full bg-primary' />}
                     </Link>
                 </div>
             </nav>

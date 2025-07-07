@@ -89,7 +89,7 @@ export default function DashboardPage() {
   }
   
   if (!user || !goalData || !comparisonData || !streakData) {
-      return <div>Could not load dashboard data. Please try again later.</div>
+      return <div className='p-8 text-center'>Could not load dashboard data. Please try again later.</div>
   }
 
   return (

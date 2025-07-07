@@ -153,7 +153,7 @@ export default function AddActivityPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mt-6 rounded-lg border bg-green-50 border-green-200 p-4 text-center dark:bg-green-900/20 dark:border-green-700/30"
+        className="mt-6 rounded-lg border bg-green-500/10 border-green-500/20 p-4 text-center"
       >
         <p className="text-sm text-green-700 dark:text-green-300">Estimated Emission:</p>
         <p className="text-2xl font-bold text-primary">
@@ -195,19 +195,19 @@ export default function AddActivityPage() {
                 <div className="space-y-2">
                   <Label>Mode of Transport</Label>
                    <RadioGroup value={travelMode} onValueChange={setTravelMode} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <Label htmlFor="car" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                      <Label htmlFor="car" className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="car" id="car" className="sr-only" />
                         <Car className="mb-2"/> Car
                       </Label>
-                       <Label htmlFor="bike" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                       <Label htmlFor="bike" className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="bike" id="bike" className="sr-only" />
                         <Bike className="mb-2"/> Bike
                       </Label>
-                      <Label htmlFor="metro" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                      <Label htmlFor="metro" className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="metro" id="metro" className="sr-only" />
                         <Train className="mb-2"/> Metro
                       </Label>
-                       <Label htmlFor="plane" className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                       <Label htmlFor="plane" className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="plane" id="plane" className="sr-only" />
                         <Plane className="mb-2"/> Plane
                       </Label>
@@ -226,22 +226,21 @@ export default function AddActivityPage() {
                 </AnimatePresence>
               </div>
             </TabsContent>
-
-            {/* Food Tab */}
+            
             <TabsContent value="food" className="mt-6">
                <div className="space-y-4">
                  <div className="space-y-2">
                   <Label>Meal Type</Label>
                     <RadioGroup value={mealType} onValueChange={setMealType} className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <Label htmlFor="home" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                      <Label htmlFor="home" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="home" id="home" className="sr-only" />
                          Home-cooked
                       </Label>
-                       <Label htmlFor="takeout" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                       <Label htmlFor="takeout" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="takeout" id="takeout" className="sr-only" />
                          Takeout
                       </Label>
-                      <Label htmlFor="restaurant" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                      <Label htmlFor="restaurant" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="restaurant" id="restaurant" className="sr-only" />
                          Restaurant
                       </Label>
@@ -250,15 +249,15 @@ export default function AddActivityPage() {
                 <div className="space-y-2">
                   <Label>Diet Type</Label>
                   <RadioGroup value={dietType} onValueChange={setDietType} className='flex gap-2'>
-                      <Label htmlFor="veg" className={cn("rounded-full border px-3 py-1 cursor-pointer", dietType === 'veg' ? 'bg-secondary text-secondary-foreground border-transparent' : 'bg-transparent')}>
+                      <Label htmlFor="veg" className={cn("rounded-full border px-3 py-1 cursor-pointer transition-all", dietType === 'veg' ? 'bg-primary/20 border-primary text-primary-foreground' : 'bg-transparent')}>
                         <RadioGroupItem value="veg" id="veg" className="sr-only" />
                          Veg
                       </Label>
-                       <Label htmlFor="non-veg" className={cn("rounded-full border px-3 py-1 cursor-pointer", dietType === 'non-veg' ? 'bg-secondary text-secondary-foreground border-transparent' : 'bg-transparent')}>
+                       <Label htmlFor="non-veg" className={cn("rounded-full border px-3 py-1 cursor-pointer transition-all", dietType === 'non-veg' ? 'bg-primary/20 border-primary text-primary-foreground' : 'bg-transparent')}>
                         <RadioGroupItem value="non-veg" id="non-veg" className="sr-only" />
                          Non-Veg
                       </Label>
-                       <Label htmlFor="processed" className={cn("rounded-full border px-3 py-1 cursor-pointer", dietType === 'processed' ? 'bg-secondary text-secondary-foreground border-transparent' : 'bg-transparent')}>
+                       <Label htmlFor="processed" className={cn("rounded-full border px-3 py-1 cursor-pointer transition-all", dietType === 'processed' ? 'bg-primary/20 border-primary text-primary-foreground' : 'bg-transparent')}>
                         <RadioGroupItem value="processed" id="processed" className="sr-only" />
                          Processed
                       </Label>
@@ -273,8 +272,7 @@ export default function AddActivityPage() {
                 </AnimatePresence>
               </div>
             </TabsContent>
-
-            {/* Energy Tab */}
+           
              <TabsContent value="energy" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
@@ -300,21 +298,20 @@ export default function AddActivityPage() {
               </div>
             </TabsContent>
 
-            {/* Shopping Tab */}
             <TabsContent value="shopping" className="mt-6">
                <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Product Category</Label>
                   <RadioGroup value={productCategory} onValueChange={setProductCategory} className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <Label htmlFor="clothing" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                      <Label htmlFor="clothing" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="clothing" id="clothing" className="sr-only" />
                          Clothing
                       </Label>
-                       <Label htmlFor="electronics" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                       <Label htmlFor="electronics" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="electronics" id="electronics" className="sr-only" />
                          Electronics
                       </Label>
-                      <Label htmlFor="other" className="text-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                      <Label htmlFor="other" className="text-center rounded-lg border-2 border-muted bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:shadow-md">
                         <RadioGroupItem value="other" id="other" className="sr-only" />
                          Other
                       </Label>
