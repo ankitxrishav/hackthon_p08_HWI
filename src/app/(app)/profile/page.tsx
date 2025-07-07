@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { useAuth } from '@/hooks/use-auth';
 import { getUserProfile, setUserProfile } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
-import type { UserProfile, TransportMode } from '@/types';
+import type { UserProfile, TransportMode, TransportDetail } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,8 +73,17 @@ export default function ProfilePage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      const baselineEmissions = calculateBaselineEmissions(data);
-      const profileToSave: UserProfile = { ...data, baselineEmissions };
+      const cleanedTransportModes = Object.entries(data.transportModes).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key as TransportMode] = value;
+        }
+        return acc;
+      }, {} as Partial<Record<TransportMode, TransportDetail>>);
+      
+      const dataToSave = { ...data, transportModes: cleanedTransportModes };
+
+      const baselineEmissions = calculateBaselineEmissions(dataToSave);
+      const profileToSave: UserProfile = { ...dataToSave, baselineEmissions };
       
       await setUserProfile(user.uid, profileToSave);
       reset(profileToSave); // update form state with new baseline
@@ -136,7 +145,8 @@ export default function ProfilePage() {
               ))}
           </div>
           <div className="grid md:grid-cols-2 gap-4 pt-4">
-              {Object.keys(selectedTransportModes).map((mode) => (
+              {Object.entries(selectedTransportModes).map(([mode, details]) => (
+                details && (
                   <div key={mode} className="space-y-2">
                       <Label className="capitalize">Weekly Distance for {mode} (km)</Label>
                       <Controller
@@ -147,6 +157,7 @@ export default function ProfilePage() {
                           )}
                       />
                   </div>
+                )
               ))}
           </div>
         </CardContent>

@@ -29,7 +29,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { setUserProfile } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { UserProfile, TransportMode } from '@/types';
+import type { UserProfile, TransportMode, TransportDetail } from '@/types';
 import { calculateBaselineEmissions } from '@/lib/calculations';
 
 const steps = [
@@ -81,11 +81,19 @@ export default function OnboardingPage() {
         }
         setIsLoading(true);
         try {
-          const baselineEmissions = calculateBaselineEmissions(data);
-          const profileData: UserProfile = { ...data, baselineEmissions };
+          const cleanedTransportModes = Object.entries(data.transportModes).reduce((acc, [key, value]) => {
+            if (value !== undefined) {
+              acc[key as TransportMode] = value;
+            }
+            return acc;
+          }, {} as Partial<Record<TransportMode, TransportDetail>>);
+
+          const dataToSave = { ...data, transportModes: cleanedTransportModes };
+          
+          const baselineEmissions = calculateBaselineEmissions(dataToSave);
+          const profileData: UserProfile = { ...dataToSave, baselineEmissions };
           await setUserProfile(user.uid, profileData);
           
-          // Set a flag in session storage to indicate onboarding is complete for this session
           sessionStorage.setItem('onboardingComplete', 'true');
 
           toast({ title: 'Success!', description: 'Your carbon profile has been created.' });
