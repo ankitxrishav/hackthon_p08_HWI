@@ -19,16 +19,15 @@ const chartConfig = {
 
 interface WeeklyEmissionsChartProps {
   data: WeeklyEmission[];
-  isBaseline?: boolean;
 }
 
-export function WeeklyEmissionsChart({ data, isBaseline }: WeeklyEmissionsChartProps) {
+export function WeeklyEmissionsChart({ data }: WeeklyEmissionsChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isBaseline ? "Baseline Weekly Projection" : "Weekly Activity Chart"}</CardTitle>
+        <CardTitle>Weekly Activity Chart</CardTitle>
         <CardDescription>
-            {isBaseline ? "A projection based on your daily baseline emissions." : "Your carbon emissions over the last 7 days."}
+            Your carbon emissions from logged activities over the last 7 days.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -64,8 +63,7 @@ export function WeeklyEmissionsChart({ data, isBaseline }: WeeklyEmissionsChartP
               type="monotone"
               stroke="var(--color-emissions)"
               strokeWidth={2}
-              strokeDasharray={isBaseline ? "4 4" : "0"}
-              dot={!isBaseline}
+              dot={true}
             />
           </LineChart>
         </ChartContainer>

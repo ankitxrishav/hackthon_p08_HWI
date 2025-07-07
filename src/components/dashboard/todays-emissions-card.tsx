@@ -9,15 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { formatDistanceToNow } from 'date-fns';
 
 interface TodaysEmissionsCardProps {
   data: {
     total: number;
     breakdown: CategoryBreakdown[];
   };
-  isBaseline?: boolean;
-  updatedAt?: string | null;
 }
 
 function Counter({ from, to }: { from: number; to: number }) {
@@ -27,7 +24,10 @@ function Counter({ from, to }: { from: number; to: number }) {
     const node = nodeRef.current;
     if (!node) return;
 
-    const controls = animate(from, to, {
+    // To prevent a jarring jump, we can get the current value from the node
+    const fromValue = parseFloat(node.textContent || '0');
+
+    const controls = animate(fromValue, to, {
       duration: 1,
       ease: 'easeOut',
       onUpdate(value) {
@@ -36,13 +36,14 @@ function Counter({ from, to }: { from: number; to: number }) {
     });
 
     return () => controls.stop();
-  }, [from, to]);
+  }, [to]);
 
-  return <span ref={nodeRef} />;
+  // Set the initial value directly so there's no flicker
+  return <span ref={nodeRef}>{from.toFixed(1)}</span>;
 }
 
 
-export function TodaysEmissionsCard({ data, isBaseline, updatedAt }: TodaysEmissionsCardProps) {
+export function TodaysEmissionsCard({ data }: TodaysEmissionsCardProps) {
 
   const getEmissionColor = (total: number) => {
     if (total < 10) return 'text-green-600';
@@ -54,12 +55,7 @@ export function TodaysEmissionsCard({ data, isBaseline, updatedAt }: TodaysEmiss
     <Card className='text-center'>
       <CardHeader>
         <CardDescription>
-            {isBaseline ? "Your Calculated Daily Baseline" : "Today's Total Emissions"}
-            {isBaseline && updatedAt && (
-                <span className="block text-xs text-muted-foreground/80">
-                    (Last updated: {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })})
-                </span>
-            )}
+            Today's Total Emissions
         </CardDescription>
         <CardTitle className={`text-6xl font-extrabold tracking-tighter ${getEmissionColor(data.total)}`}>
           <Counter from={0} to={data.total} />
