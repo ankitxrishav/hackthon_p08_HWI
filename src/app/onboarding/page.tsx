@@ -35,9 +35,9 @@ import { calculateBaselineEmissions } from '@/lib/calculations';
 const steps = [
   { id: 1, title: 'Welcome', icon: Leaf, fields: [] },
   { id: 2, title: 'Travel Habits', icon: Car, fields: ['transportModes'] },
-  { id: 3, title: 'Food Habits', icon: CookingPot, fields: ['diet', 'householdSize'] },
+  { id: 3, title: 'Food Habits', icon: CookingPot, fields: ['diet', 'mealsPerDay', 'householdSize'] },
   { id: 4, title: 'Home Energy', icon: Zap, fields: ['monthlyKwh', 'usesRenewable', 'usesAcHeater'] },
-  { id: 5, title: 'Shopping', icon: ShoppingCart, fields: ['shoppingFrequency'] },
+  { id: 5, title: 'Shopping', icon: ShoppingCart, fields: ['monthlySpend'] },
   { id: 6, title: 'Review & Finish', icon: Check, fields: [] },
 ];
 
@@ -54,11 +54,12 @@ export default function OnboardingPage() {
         defaultValues: {
             transportModes: { car: { km_per_week: 50 } },
             diet: 'mixed',
-            monthlyKwh: 100,
+            monthlyKwh: 150,
             usesRenewable: false,
             usesAcHeater: true,
-            shoppingFrequency: 'monthly',
+            monthlySpend: 4000,
             householdSize: 2,
+            mealsPerDay: 3,
         }
     });
 
@@ -133,7 +134,7 @@ export default function OnboardingPage() {
                     >
                         {currentStep === 1 && (
                             <div>
-                                <h2 className="text-2xl font-semibold">Welcome to Susthira!</h2>
+                                <h2 className="text-2xl font-semibold">Welcome to CarbonWise!</h2>
                                 <p className="text-muted-foreground mt-2">Let’s understand your lifestyle to build your personalized carbon profile. This will help us give you accurate insights and recommendations.</p>
                             </div>
                         )}
@@ -184,6 +185,16 @@ export default function OnboardingPage() {
                                     )} />
                                  <div className="space-y-4">
                                      <Controller
+                                        name="mealsPerDay"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="meals">Average meals per day</Label>
+                                                <Input id="meals" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                                            </div>
+                                        )}
+                                    />
+                                     <Controller
                                         name="householdSize"
                                         control={control}
                                         render={({ field }) => (
@@ -220,19 +231,12 @@ export default function OnboardingPage() {
                         )}
                         {currentStep === 5 && (
                              <Controller
-                                name="shoppingFrequency"
+                                name="monthlySpend"
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label>How often do you shop for new items (clothing, electronics)?</Label>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <SelectTrigger><SelectValue placeholder="Select frequency" /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="weekly">Weekly</SelectItem>
-                                                <SelectItem value="monthly">Monthly</SelectItem>
-                                                <SelectItem value="rarely">Rarely</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Label>Monthly spend on non-essentials (fashion, electronics) (₹)</Label>
+                                        <Input type="number" placeholder="e.g., 2500" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                                     </div>
                                 )}/>
                         )}
@@ -245,7 +249,7 @@ export default function OnboardingPage() {
                                         <div><strong className="font-medium text-muted-foreground block">Diet</strong> {getValues('diet')}</div>
                                         <div><strong className="font-medium text-muted-foreground block">Household</strong> {getValues('householdSize')} people</div>
                                         <div><strong className="font-medium text-muted-foreground block">Energy</strong> {getValues('monthlyKwh')} kWh/month</div>
-                                        <div><strong className="font-medium text-muted-foreground block">Shopping</strong> {getValues('shoppingFrequency')}</div>
+                                        <div><strong className="font-medium text-muted-foreground block">Shopping Spend</strong> ₹{getValues('monthlySpend')}/month</div>
                                         <div><strong className="font-medium text-muted-foreground block">Renewable?</strong> {getValues('usesRenewable') ? 'Yes' : 'No'}</div>
                                         <div><strong className="font-medium text-muted-foreground block">AC/Heater?</strong> {getValues('usesAcHeater') ? 'Yes' : 'No'}</div>
                                         <div className="col-span-2"><strong className="font-medium text-muted-foreground block">Travel</strong> 

@@ -54,7 +54,6 @@ export interface StreakData {
 
 // Detailed User Profile for Onboarding and Personalization
 export type DietType = 'vegetarian' | 'mixed' | 'meat-heavy';
-export type ShoppingFrequency = 'rarely' | 'monthly' | 'weekly';
 export type TransportMode = 'car' | 'bike' | 'metro' | 'bus' | 'walk' | 'flights';
 
 export interface TransportDetail {
@@ -70,13 +69,12 @@ export interface UserProfile {
   monthlyKwh: number;
   usesRenewable: boolean;
   usesAcHeater: boolean;
-  shoppingFrequency: ShoppingFrequency;
+  monthlySpend: number;
   householdSize: number;
+  mealsPerDay: number;
   
   // Optional detailed fields from onboarding
-  mealsPerDay?: number;
   eatOutFrequency?: 'rarely' | 'monthly' | 'weekly';
-  monthlySpend?: number;
 
   // Calculated baseline from onboarding
   baselineEmissions?: {

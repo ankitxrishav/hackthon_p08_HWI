@@ -1,6 +1,6 @@
 import type { WeeklyEmission, CategoryBreakdown, EmissionGoal, ComparisonData, StreakData, Activity } from '@/types';
 import { Globe, Flag, Flame } from 'lucide-react';
-import { getActivitiesForDateRange, getTodaysActivities } from './firestore';
+import { getActivitiesForDateRange, getTodaysActivities, getUserProfile } from './firestore';
 import { subDays, format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 
 export async function getWeeklyEmissionData(userId: string): Promise<WeeklyEmission[]> {
@@ -60,8 +60,10 @@ export async function getTodaysBreakdown(userId: string): Promise<{ total: numbe
 }
 
 export async function getEmissionGoal(userId: string): Promise<EmissionGoal> {
-  // In a real app, this goal would be user-configurable and stored in Firestore
-  const goal = 20; // Static daily goal for now
+  const profile = await getUserProfile(userId);
+  // Use the personalized daily baseline from the profile, or a default value.
+  const goal = profile?.baselineEmissions?.daily || 8.0; 
+  
   const { total } = await getTodaysBreakdown(userId);
   return {
     current: total,
@@ -89,7 +91,8 @@ export function getComparisonData(): Record<string, ComparisonData> {
 export async function getStreakData(userId: string): Promise<StreakData> {
      // This is a simplified streak calculation. A real one would be more complex.
     let streak = 0;
-    const dailyGoal = 20; // kg CO2e
+    const profile = await getUserProfile(userId);
+    const dailyGoal = profile?.baselineEmissions?.daily || 8.0;
 
     for (let i = 0; i < 30; i++) { // Check last 30 days
         const date = subDays(new Date(), i);

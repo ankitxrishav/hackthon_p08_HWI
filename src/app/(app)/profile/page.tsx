@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { calculateBaselineEmissions } from '@/lib/calculations';
@@ -27,7 +26,7 @@ const transportOptions: TransportMode[] = ['car', 'bike', 'metro', 'bus', 'walk'
 
 const ProfileSkeleton = () => (
   <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-    {[...Array(3)].map((_, i) => (
+    {[...Array(4)].map((_, i) => (
       <Card key={i}>
         <CardHeader>
           <Skeleton className="h-8 w-1/3" />
@@ -73,7 +72,7 @@ export default function ProfilePage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      const cleanedTransportModes = Object.entries(data.transportModes).reduce((acc, [key, value]) => {
+      const cleanedTransportModes = Object.entries(data.transportModes || {}).reduce((acc, [key, value]) => {
         if (value !== undefined) {
           acc[key as TransportMode] = value;
         }
@@ -153,7 +152,7 @@ export default function ProfilePage() {
                           name={`transportModes.${mode as TransportMode}.km_per_week`}
                           control={control}
                           render={({ field }) => (
-                              <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                              <Input type="number" {...field} value={field.value?.km_per_week || 0} onChange={e => field.onChange({ km_per_week: parseInt(e.target.value, 10) || 0 })} />
                           )}
                       />
                   </div>
@@ -183,7 +182,14 @@ export default function ProfilePage() {
              <div className="space-y-2">
               <Label>Household Size</Label>
               <Controller name="householdSize" control={control} render={({ field }) => (
-                  <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                  <Input type="number" {...field} value={field.value || 1} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
+                )}
+              />
+            </div>
+             <div className="space-y-2">
+              <Label>Meals Per Day</Label>
+              <Controller name="mealsPerDay" control={control} render={({ field }) => (
+                  <Input type="number" {...field} value={field.value || 3} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} />
                 )}
               />
             </div>
@@ -196,21 +202,14 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <Label>Monthly Electricity (kWh)</Label>
                <Controller name="monthlyKwh" control={control} render={({ field }) => (
-                  <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                  <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                 )}
               />
             </div>
             <div className="space-y-2">
-              <Label>Shopping Frequency</Label>
-               <Controller name="shoppingFrequency" control={control} render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select frequency" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="rarely">Rarely</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <Label>Monthly Spend on Non-essentials (₹)</Label>
+               <Controller name="monthlySpend" control={control} render={({ field }) => (
+                  <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                 )}
               />
             </div>

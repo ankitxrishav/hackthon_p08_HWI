@@ -13,7 +13,7 @@ import { z } from 'genkit';
 
 const CalculateEmissionInputSchema = z.object({
   category: z.enum(['Travel', 'Food', 'Energy', 'Shopping']),
-  value: z.number().describe('The primary value for the calculation (e.g., distance in km, energy in kWh).'),
+  value: z.number().describe('The primary value for the calculation (e.g., distance in km, energy in kWh, amount in INR).'),
   details: z.record(z.any()).optional().describe('Additional details about the activity (e.g., transport mode, meal type).'),
 });
 export type CalculateEmissionInput = z.infer<typeof CalculateEmissionInputSchema>;
@@ -34,25 +34,33 @@ const prompt = ai.definePrompt({
   name: 'emissionCalculationPrompt',
   input: { schema: CalculateEmissionInputSchema },
   output: { schema: CalculateEmissionOutputSchema },
-  prompt: `You are a carbon footprint calculation expert. Based on the provided activity, calculate the estimated carbon emission in kg CO₂e. Use standard emission factors.
-  
+  prompt: `You are a carbon footprint calculation expert. Based on the provided activity, calculate the estimated carbon emission in kg CO₂e using the specific emission factors provided below.
+
   Activity Category: {{{category}}}
   Primary Value: {{{value}}}
   Details: {{jsonStringify details}}
-  
-  Here are some example emission factors to guide you:
-  - Car (gasoline): 0.18 kg CO₂e/km
+
+  Use these exact emission factors for your calculation:
+  - Car (gasoline): 0.192 kg CO₂e/km
   - Plane (short-haul): 0.25 kg CO₂e/km
-  - Metro/Train: 0.04 kg CO₂e/km
+  - Metro/Train: 0.045 kg CO₂e/km
+  - Bus: 0.10 kg CO₂e/km
   - Bike/Walk: 0 kg CO₂e/km
-  - Red meat meal: 7 kg CO₂e/meal
-  - Vegetarian meal: 1.5 kg CO₂e/meal
-  - Processed food: 3 kg CO₂e/meal
-  - Electricity (standard grid): 0.45 kg CO₂e/kWh
-  - Clothing: 10 kg CO₂e per item ($50 spent ~ 1 item)
-  - Electronics: 50 kg CO₂e per item ($200 spent ~ 1 item)
+  - High-meat meal ('non-veg'): 3.5 kg CO₂e/day (assume 1 meal if not specified)
+  - Mixed meal: 2.5 kg CO₂e/day
+  - Vegetarian meal ('veg'): 1.5 kg CO₂e/day
+  - Electricity (standard grid): 0.82 kg CO₂e/kWh
+  - Shopping (based on spend): 0.4 kg CO₂e per 1000₹ spent (or 0.0004 per ₹)
+
+  The 'value' field corresponds to the primary metric for each category:
+  - For Shopping, 'value' is the amount spent in rupees (₹).
+  - For Travel, 'value' is the distance in km.
+  - For Food, 'value' is the number of meals (default to 1 if not specified). Use the details to determine meal type.
+  - For Energy, 'value' is the kWh consumed.
+
+  Example calculation: If a user spent ₹1500 on clothes, the emission is 1500 * 0.0004 = 0.6 kg CO₂e.
   
-  Return only the calculated emission value.`,
+  Return only the calculated numeric emission value.`,
 });
 
 const calculateEmissionFlow = ai.defineFlow(
