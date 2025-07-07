@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BarChart2, Leaf, Lightbulb, PlusCircle, User, Settings, LogOut } from 'lucide-react';
+import { BarChart2, Leaf, Lightbulb, PlusCircle, User, Settings, LogOut, History } from 'lucide-react';
 import { Icons } from '../icons';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,6 +22,7 @@ const navItems = [
   { href: '/dashboard', icon: Leaf, label: 'Dashboard' },
   { href: '/add-activity', icon: PlusCircle, label: 'Add Activity' },
   { href: '/insights', icon: BarChart2, label: 'Insights' },
+  { href: '/history', icon: History, label: 'History' },
   { href: '/recommendations', icon: Lightbulb, label: 'Recommendations' },
   { href: '/profile', icon: User, label: 'Profile' }
 ];

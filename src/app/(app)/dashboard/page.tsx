@@ -90,13 +90,16 @@ export default function DashboardPage() {
     
     fetchData();
 
-    // Set up an event listener to refetch data when an activity is added.
-    const handleActivityAdded = () => fetchData();
-    window.addEventListener('activityAdded', handleActivityAdded);
+    // Set up an event listener to refetch data when an activity is added or deleted.
+    const handleActivityChange = () => fetchData();
+    window.addEventListener('activityAdded', handleActivityChange);
+    window.addEventListener('activityDeleted', handleActivityChange);
+
 
     // Clean up the event listener on component unmount.
     return () => {
-      window.removeEventListener('activityAdded', handleActivityAdded);
+      window.removeEventListener('activityAdded', handleActivityChange);
+      window.removeEventListener('activityDeleted', handleActivityChange);
     };
   }, [user]);
 

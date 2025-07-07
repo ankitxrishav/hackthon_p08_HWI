@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import type { Activity, EmissionCategory, UserProfile } from '@/types';
 
 type ActivityLog = {
@@ -20,6 +20,17 @@ export const addActivityLog = async (userId: string, activityData: ActivityLog) 
     } catch (error) {
         console.error("Error adding document: ", error);
         throw new Error("Could not save activity.");
+    }
+};
+
+// Function to delete an activity log
+export const deleteActivityLog = async (userId: string, activityId: string) => {
+    try {
+        const activityRef = doc(db, 'users', userId, 'activities', activityId);
+        await deleteDoc(activityRef);
+    } catch (error) {
+        console.error("Error deleting document: ", error);
+        throw new Error("Could not delete activity.");
     }
 };
 
@@ -62,6 +73,29 @@ export const getTodaysActivities = async (userId: string): Promise<Activity[]> =
 
     return getActivitiesForDateRange(userId, todayStart, todayEnd);
 }
+
+// Function to get the complete activity history for a user
+export const getActivityHistory = async (userId: string): Promise<Activity[]> => {
+    try {
+        const userActivitiesCol = collection(db, 'users', userId, 'activities');
+        const q = query(userActivitiesCol, orderBy('date', 'desc'));
+
+        const querySnapshot = await getDocs(q);
+        const activities: Activity[] = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            activities.push({
+                id: doc.id,
+                ...data,
+                date: (data.date as Timestamp).toDate().toISOString(),
+            } as Activity);
+        });
+        return activities;
+    } catch (error) {
+        console.error("Error getting activity history: ", error);
+        throw error;
+    }
+};
 
 
 // New User Profile functions
