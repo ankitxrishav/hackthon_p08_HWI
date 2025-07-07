@@ -31,7 +31,7 @@ export default function AppLayout({
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
-    // While auth state is resolving, do nothing. The skeleton will show.
+    // While auth state is resolving, show a skeleton.
     if (authLoading) {
       return;
     }
@@ -41,43 +41,44 @@ export default function AppLayout({
       router.push('/');
       return;
     }
-    
-    // Check if the user's session status has already been verified and a landing page shown.
-    // If so, allow free navigation.
+
+    // Check if the user's destination for this session has already been determined.
+    // This prevents redirect loops.
     const sessionVerified = sessionStorage.getItem('userStatusVerified');
     if (sessionVerified) {
         setIsVerified(true);
         return;
     }
 
-    // If the router is in the process of redirecting to the designated landing page,
-    // we should allow it to render. This prevents a redirect loop where this effect
-    // runs again before the page has mounted and set the 'sessionVerified' flag.
-    if (pathname === '/onboarding' || pathname === '/add-activity') {
+    // If we are already on the correct path, allow it to render before checking.
+    // This helps prevent race conditions.
+    if (pathname === '/onboarding' || pathname === '/dashboard') {
         setIsVerified(true);
         return;
     }
 
-    // This is the first check for this session.
     // Determine where to send the user based on whether they have a profile.
-    const checkUserStatus = async () => {
+    const checkUserStatusAndRedirect = async () => {
         try {
             const profile = await getUserProfile(user.uid);
-            if (!profile) {
+            if (profile) {
+                // Returning user: Send them to the dashboard.
+                router.push('/dashboard');
+            } else {
                 // New user: Send them to the onboarding survey.
                 router.push('/onboarding');
-            } else {
-                // Returning user: Send them to the Add Activity page.
-                router.push('/add-activity');
             }
         } catch (error) {
             console.error("Error checking user profile status:", error);
-            // In case of error, assume they are verified to avoid getting stuck.
-            setIsVerified(true);
+            // In case of error, default to the dashboard to avoid getting stuck.
+            router.push('/dashboard');
+        } finally {
+            // Once the redirect is issued, mark this session as verified.
+            sessionStorage.setItem('userStatusVerified', 'true');
         }
     };
 
-    checkUserStatus();
+    checkUserStatusAndRedirect();
     
   }, [user, authLoading, router, pathname]);
 

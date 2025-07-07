@@ -41,12 +41,6 @@ export default function AddActivityPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // This is the new logic. When a returning user lands here,
-  // we set the session flag to unlock navigation to other pages.
-  useEffect(() => {
-    sessionStorage.setItem('userStatusVerified', 'true');
-  }, []);
-
   // Form state for each category
   const [travelMode, setTravelMode] = useState('car');
   const [distance, setDistance] = useState('');
@@ -115,6 +109,9 @@ export default function AddActivityPage() {
         title: 'Success!',
         description: 'Your activity has been logged.',
       });
+      
+      // Dispatch a custom event to notify other components that an activity was added.
+      window.dispatchEvent(new CustomEvent('activityAdded'));
 
       // Reset form fields after logging
       switch (category) {
@@ -142,7 +139,7 @@ export default function AddActivityPage() {
         <CardHeader>
           <CardTitle>Log New Activity</CardTitle>
           <CardDescription>
-            Select a category and log your activity to see its impact. This is your main page as a returning user.
+            Select a category and log your activity to see its impact.
           </CardDescription>
         </CardHeader>
         <CardContent>

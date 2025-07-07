@@ -12,17 +12,8 @@ import { CategoryBreakdownChart } from '@/components/dashboard/category-breakdow
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StreakCard } from '@/components/dashboard/streak-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, PieChart } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-
-// New type for baseline data
-interface BaselineData {
-  dailyTotal: number;
-  breakdown: CategoryBreakdown[];
-  weeklyChartData: WeeklyEmission[];
-  updatedAt: string | null;
-}
 
 const DashboardSkeleton = () => (
   <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -45,63 +36,68 @@ const DashboardSkeleton = () => (
   </div>
 );
 
-
 export default function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State for data from ACTUAL logged activities
-  const [activityWeeklyData, setActivityWeeklyData] = useState<WeeklyEmission[]>([]);
+  const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
+  const [todaysData, setTodaysData] = useState<{ total: number; breakdown: CategoryBreakdown[] } | null>(null);
   const [goalData, setGoalData] = useState<EmissionGoal | null>(null);
   const [comparisonData, setComparisonData] = useState<Record<string, ComparisonData> | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
 
-  // New state for BASELINE data from the survey/profile
-  const [baselineData, setBaselineData] = useState<BaselineData | null>(null);
-
   useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          // Fetch both baseline data and activity data in parallel
-          const [
-            fetchedBaseline,
-            fetchedActivityWeekly,
-            fetchedGoal,
-            fetchedComparison,
-            fetchedStreak,
-          ] = await Promise.all([
-            DataService.getBaselineProfileData(user.uid),
-            DataService.getWeeklyEmissionData(user.uid),
-            DataService.getEmissionGoal(user.uid),
-            DataService.getComparisonData(),
-            DataService.getStreakData(user.uid),
-          ]);
-
-          // Set state for both baseline and activity data
-          setBaselineData(fetchedBaseline);
-          setActivityWeeklyData(fetchedActivityWeekly);
-          setGoalData(fetchedGoal);
-          setComparisonData(fetchedComparison);
-          setStreakData(fetchedStreak);
-        } catch (err: any) {
-          console.error("Failed to fetch dashboard data:", err);
-          if (err.code === 'permission-denied' || err.message.includes('permission-denied')) {
-            setError("You have a permissions error in your database. Please check your Firestore security rules in the Firebase Console.");
-          } else {
-            setError("Could not load dashboard data. Please try again later.");
-          }
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchData();
-    } else {
+    // A function to fetch all data, which can be called on mount and after activity logging.
+    const fetchData = async () => {
+      if (!user) {
         setLoading(false);
-    }
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const [
+          fetchedWeekly,
+          fetchedTodays,
+          fetchedGoal,
+          fetchedComparison,
+          fetchedStreak,
+        ] = await Promise.all([
+          DataService.getWeeklyEmissionData(user.uid),
+          DataService.getTodaysBreakdown(user.uid),
+          DataService.getEmissionGoal(user.uid),
+          DataService.getComparisonData(),
+          DataService.getStreakData(user.uid),
+        ]);
+
+        setWeeklyData(fetchedWeekly);
+        setTodaysData(fetchedTodays);
+        setGoalData(fetchedGoal);
+        setComparisonData(fetchedComparison);
+        setStreakData(fetchedStreak);
+      } catch (err: any) {
+        console.error("Failed to fetch dashboard data:", err);
+        if (err.code === 'permission-denied' || (err.message && err.message.includes('permission-denied'))) {
+            setError("You have a permissions error in your database. Please check your Firestore security rules in the Firebase Console.");
+        } else {
+            setError("Could not load dashboard data. Please try again later.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+
+    // Set up an event listener to refetch data when an activity is added.
+    const handleActivityAdded = () => fetchData();
+    window.addEventListener('activityAdded', handleActivityAdded);
+
+    // Clean up the event listener on component unmount.
+    return () => {
+      window.removeEventListener('activityAdded', handleActivityAdded);
+    };
   }, [user]);
 
   if (loading) {
@@ -120,15 +116,13 @@ export default function DashboardPage() {
     );
   }
   
-  // A new user needs a baseline profile to see the dashboard.
-  if (!user || !goalData || !comparisonData || !streakData || !baselineData) {
+  if (!user || !todaysData || !goalData || !comparisonData || !streakData) {
       return <div className='p-8 text-center'>Could not load dashboard data. Please complete your profile survey to get started.</div>
   }
   
-  // Goal data now uses ACTUAL activity data against the goal from the profile. This is correct.
   const weeklyGoalData: EmissionGoal = {
     ...goalData, 
-    current: parseFloat(activityWeeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
+    current: parseFloat(weeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
     goal: goalData.goal * 7, 
     label: "Weekly Goal" 
   };
@@ -137,25 +131,21 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-4">
-            <TodaysEmissionsCard 
-                data={{ total: baselineData.dailyTotal, breakdown: baselineData.breakdown }} 
-                isBaseline={true}
-                updatedAt={baselineData.updatedAt}
-            />
+            <TodaysEmissionsCard data={todaysData} />
         </div>
         <div className="lg:col-span-2">
-           <WeeklyEmissionsChart data={baselineData.weeklyChartData} isBaseline={true} />
+           <WeeklyEmissionsChart data={weeklyData} />
         </div>
         <div className="lg:col-span-2">
              <Card className='h-full'>
                 <CardHeader>
-                    <CardTitle>Daily Baseline Breakdown</CardTitle>
+                    <CardTitle className='flex items-center gap-2'><PieChart className='text-primary' /> Today's Emission Sources</CardTitle>
                     <CardDescription>
-                        Your estimated daily emissions based on your profile survey.
+                        A breakdown of your logged emissions by category for today.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className='h-[300px]'>
-                    <CategoryBreakdownChart data={baselineData.breakdown} />
+                    <CategoryBreakdownChart data={todaysData.breakdown} />
                 </CardContent>
             </Card>
         </div>
