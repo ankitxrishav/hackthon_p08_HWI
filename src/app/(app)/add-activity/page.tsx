@@ -26,10 +26,9 @@ import {
   Train,
   Plane,
   Loader2,
-  CheckCircle
+  PlusCircle,
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import type { CalculateEmissionInput, EmissionCategory } from '@/types';
 import { calculateEmission } from '@/ai/flows/calculate-emission';
@@ -37,18 +36,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { addActivityLog } from '@/lib/firestore';
 import { cn } from '@/lib/utils';
 
-type ActivityResult = {
-  category: string;
-  value: number;
-} | null;
-
 export default function AddActivityPage() {
   const { user } = useAuth();
-  const [result, setResult] = useState<ActivityResult>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [isLogging, setIsLogging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Form state for each category
   const [travelMode, setTravelMode] = useState('car');
   const [distance, setDistance] = useState('');
   
@@ -62,10 +55,17 @@ export default function AddActivityPage() {
   const [productCategory, setProductCategory] = useState('clothing');
   const [amountSpent, setAmountSpent] = useState('');
 
-  const handleCalculate = async (category: CalculateEmissionInput['category']) => {
-    setIsCalculating(true);
-    setResult(null);
+  const handleAddActivity = async (category: EmissionCategory) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Signed In',
+        description: 'You must be signed in to log an activity.',
+      });
+      return;
+    }
 
+    setIsLoading(true);
     let input: CalculateEmissionInput | null = null;
     let description = '';
 
@@ -77,8 +77,8 @@ export default function AddActivityPage() {
           description = `${travelMode.charAt(0).toUpperCase() + travelMode.slice(1)} ride for ${distance} km`;
           break;
         case 'Food':
-           input = { category, value: 1, details: { mealType, dietType } };
-           description = `${dietType} meal (${mealType})`;
+           input = { category, value: 1, details: { dietType } }; // mealType is not in factors
+           description = `${dietType} meal`;
           break;
         case 'Energy':
           const energy = parseFloat(energyConsumed) || 0;
@@ -98,78 +98,38 @@ export default function AddActivityPage() {
       }
       
       const { emission } = await calculateEmission(input);
-      setResult({ category, value: parseFloat(emission.toFixed(2)) });
 
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Calculation Error',
-        description: error.message || 'Could not calculate emissions.',
-      });
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  const handleLogActivity = async () => {
-    if (!result || !user) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'No result to log or you are not signed in.',
-      });
-      return;
-    }
-
-    setIsLogging(true);
-    try {
       await addActivityLog(user.uid, {
-        category: result.category as EmissionCategory,
-        emissions: result.value,
-        description: `Logged ${result.category} activity`, // This could be more detailed
+        category,
+        emissions: parseFloat(emission.toFixed(2)),
+        description,
         date: new Date().toISOString(),
       });
+      
       toast({
         title: 'Success!',
         description: 'Your activity has been logged.',
-        className: 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700'
       });
-      setResult(null); // Clear result after logging
+
+      // Reset form fields after logging
+      switch (category) {
+        case 'Travel': setDistance(''); break;
+        case 'Food': break; // No fields to clear for food
+        case 'Energy': setEnergyConsumed(''); setAcHours(''); setHeaterHours(''); break;
+        case 'Shopping': setAmountSpent(''); break;
+      }
+
     } catch (error: any) {
-       toast({
+      toast({
         variant: 'destructive',
         title: 'Logging Error',
         description: error.message || 'Could not log your activity.',
       });
     } finally {
-      setIsLogging(false);
+      setIsLoading(false);
     }
   };
 
-  const ActivityResultDisplay = ({ result, onLog, isLogging }: { result: ActivityResult, onLog: () => void, isLogging: boolean }) => {
-    if (!result) return null;
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mt-6 rounded-lg border bg-green-500/10 border-green-500/20 p-4 text-center"
-      >
-        <p className="text-sm text-green-700 dark:text-green-300">Estimated Emission:</p>
-        <p className="text-2xl font-bold text-primary">
-          {result.value} kg CO₂e
-        </p>
-        <Button size="sm" className="mt-2" onClick={onLog} disabled={isLogging}>
-          {isLogging ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle className="mr-2 h-4 w-4" />
-          )}
-          Add to Log
-        </Button>
-      </motion.div>
-    );
-  };
 
   return (
     <div className="flex justify-center items-start p-4 md:p-8 pt-6">
@@ -181,7 +141,7 @@ export default function AddActivityPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="travel" className="w-full" onValueChange={() => setResult(null)}>
+          <Tabs defaultValue="travel" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="travel"><Car className="mr-2 h-4 w-4" /> Travel</TabsTrigger>
               <TabsTrigger value="food"><Utensils className="mr-2 h-4 w-4" /> Food</TabsTrigger>
@@ -217,13 +177,10 @@ export default function AddActivityPage() {
                   <Label htmlFor="distance">Distance (km)</Label>
                   <Input id="distance" type="number" placeholder="e.g., 25" value={distance} onChange={(e) => setDistance(e.target.value)} />
                 </div>
-                <Button onClick={() => handleCalculate('Travel')} disabled={isCalculating}>
-                  {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Calculate Emission
+                <Button onClick={() => handleAddActivity('Travel')} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Add Activity
                 </Button>
-                <AnimatePresence>
-                  {result && result.category === 'Travel' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
-                </AnimatePresence>
               </div>
             </TabsContent>
             
@@ -263,13 +220,10 @@ export default function AddActivityPage() {
                       </Label>
                   </RadioGroup>
                 </div>
-                <Button onClick={() => handleCalculate('Food')} disabled={isCalculating}>
-                   {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Calculate Emission
+                <Button onClick={() => handleAddActivity('Food')} disabled={isLoading}>
+                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Add Activity
                 </Button>
-                <AnimatePresence>
-                  {result && result.category === 'Food' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
-                </AnimatePresence>
               </div>
             </TabsContent>
            
@@ -288,13 +242,10 @@ export default function AddActivityPage() {
                      <Input id="heater-hours" type="number" placeholder="e.g., 1 hour" value={heaterHours} onChange={e => setHeaterHours(e.target.value)} />
                   </div>
                 </div>
-                <Button onClick={() => handleCalculate('Energy')} disabled={isCalculating}>
-                  {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Calculate Emission
+                <Button onClick={() => handleAddActivity('Energy')} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Add Activity
                 </Button>
-                <AnimatePresence>
-                  {result && result.category === 'Energy' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
-                </AnimatePresence>
               </div>
             </TabsContent>
 
@@ -318,16 +269,13 @@ export default function AddActivityPage() {
                   </RadioGroup>
                 </div>
                  <div className="space-y-2">
-                  <Label htmlFor="price">Amount Spent ($)</Label>
-                  <Input id="price" type="number" placeholder="e.g., 50" value={amountSpent} onChange={e => setAmountSpent(e.target.value)} />
+                  <Label htmlFor="price">Amount Spent (₹)</Label>
+                  <Input id="price" type="number" placeholder="e.g., 5000" value={amountSpent} onChange={e => setAmountSpent(e.target.value)} />
                 </div>
-                <Button onClick={() => handleCalculate('Shopping')} disabled={isCalculating}>
-                  {isCalculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Calculate Emission
+                <Button onClick={() => handleAddActivity('Shopping')} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  Add Activity
                 </Button>
-                 <AnimatePresence>
-                  {result && result.category === 'Shopping' && <ActivityResultDisplay result={result} onLog={handleLogActivity} isLogging={isLogging} />}
-                </AnimatePresence>
               </div>
             </TabsContent>
           </Tabs>
