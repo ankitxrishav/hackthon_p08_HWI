@@ -10,13 +10,13 @@ export interface Activity {
   date: string; // ISO string
 }
 
-export interface DailyEmission {
-  date: string;
-  totalEmissions: number;
+export interface WeeklyEmission {
+  day: string;
+  emissions: number;
 }
 
 export interface CategoryBreakdown {
-  name: EmissionCategory;
+  name: EmissionCategory | string;
   emissions: number;
   fill: string;
 }
@@ -32,4 +32,10 @@ export interface EmissionGoal {
   current: number;
   goal: number;
   label: string;
+}
+
+export interface ComparisonData {
+    label: string;
+    percentage: number;
+    icon: LucideIcon;
 }
