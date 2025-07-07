@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useAuth } from '@/hooks/use-auth';
-import { getUserProfile, setUserProfile } from '@/lib/firestore';
+import { getUserProfile, setUserProfile, getProfileHistory } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile, TransportMode, TransportDetail } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,15 +18,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, History } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { calculateBaselineEmissions } from '@/lib/calculations';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { format } from 'date-fns';
+
 
 const transportOptions: TransportMode[] = ['car', 'bike', 'metro', 'bus', 'walk', 'flights'];
 
 const ProfileSkeleton = () => (
   <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-    {[...Array(4)].map((_, i) => (
+    {[...Array(5)].map((_, i) => ( // Increased to 5 for the new card
       <Card key={i}>
         <CardHeader>
           <Skeleton className="h-8 w-1/3" />
@@ -49,6 +57,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [profileHistory, setProfileHistory] = useState<UserProfile[]>([]);
 
   const { control, handleSubmit, reset, watch } = useForm<UserProfile>();
 
@@ -57,13 +66,15 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user?.uid) {
       setIsLoading(true);
-      getUserProfile(user.uid)
-        .then((profile) => {
+      Promise.all([
+          getUserProfile(user.uid),
+          getProfileHistory(user.uid)
+      ]).then(([profile, history]) => {
           if (profile) {
             reset(profile);
           }
-        })
-        .catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Could not load your profile.' }))
+          setProfileHistory(history);
+      }).catch(() => toast({ variant: 'destructive', title: 'Error', description: 'Could not load your profile data.' }))
         .finally(() => setIsLoading(false));
     }
   }, [user, reset, toast]);
@@ -79,7 +90,7 @@ export default function ProfilePage() {
         return acc;
       }, {} as Partial<Record<TransportMode, TransportDetail>>);
       
-      const dataToSave: Omit<UserProfile, 'id' | 'baselineEmissions'> = {
+      const dataToSave: Omit<UserProfile, 'id' | 'baselineEmissions' | 'updatedAt'> = {
         diet: data.diet || 'mixed',
         householdSize: Number(data.householdSize) || 1,
         mealsPerDay: Number(data.mealsPerDay) || 1,
@@ -94,7 +105,12 @@ export default function ProfilePage() {
       const profileToSave: UserProfile = { ...dataToSave, baselineEmissions };
       
       await setUserProfile(user.uid, profileToSave);
-      reset(profileToSave); // update form state with new baseline
+
+      // Fetch new history after saving
+      const newHistory = await getProfileHistory(user.uid);
+      setProfileHistory(newHistory);
+
+      reset({ ...profileToSave, updatedAt: new Date().toISOString() }); // update form state with new baseline and timestamp
       toast({
         title: 'Success!',
         description: 'Your profile has been updated.',
@@ -243,6 +259,57 @@ export default function ProfilePage() {
             Save Changes
           </Button>
       </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="size-5" /> Profile Update History
+          </CardTitle>
+          <CardDescription>
+            Review your previous profile submissions. Each update recalculates your baseline emissions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {profileHistory.length > 0 ? (
+            <Accordion type="single" collapsible className="w-full">
+              {profileHistory.map((p, index) => (
+                <AccordionItem value={`item-${index}`} key={p.id || index}>
+                  <AccordionTrigger>
+                    Profile from {p.updatedAt ? format(new Date(p.updatedAt), 'PPP') : 'Previous update'}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                     <div className="pt-2 grid grid-cols-2 gap-4 text-sm">
+                        <div><strong className="font-medium text-muted-foreground block">Diet</strong> {p.diet}</div>
+                        <div><strong className="font-medium text-muted-foreground block">Household</strong> {p.householdSize} people</div>
+                        <div><strong className="font-medium text-muted-foreground block">Energy</strong> {p.monthlyKwh} kWh/month</div>
+                        <div><strong className="font-medium text-muted-foreground block">Shopping Spend</strong> ₹{p.monthlySpend}/month</div>
+                        <div><strong className="font-medium text-muted-foreground block">Renewable?</strong> {p.usesRenewable ? 'Yes' : 'No'}</div>
+                        <div><strong className="font-medium text-muted-foreground block">AC/Heater?</strong> {p.usesAcHeater ? 'Yes' : 'No'}</div>
+                        <div className="col-span-2"><strong className="font-medium text-muted-foreground block">Travel</strong> 
+                            {Object.keys(p.transportModes || {}).length > 0 ? (
+                                <ul className="list-disc pl-5">
+                                {Object.entries(p.transportModes).map(([mode, details]) => (
+                                    details && <li key={mode} className="capitalize">{mode}: {details.km_per_week} km/week</li>
+                                ))}
+                                </ul>
+                            ) : (<p>No travel modes logged.</p>)}
+                        </div>
+                        {p.baselineEmissions && (
+                             <div className="col-span-2 mt-2 pt-2 border-t">
+                                <strong className="font-medium text-muted-foreground block">Calculated Daily Baseline</strong>
+                                <p className="text-lg font-bold">{p.baselineEmissions.daily} kg CO₂e</p>
+                             </div>
+                        )}
+                   </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <p className="text-muted-foreground text-sm">No update history found.</p>
+          )}
+        </CardContent>
+      </Card>
 
     </form>
   );

@@ -62,6 +62,7 @@ export interface TransportDetail {
 
 export interface UserProfile {
   id?: string;
+  updatedAt?: string;
   
   // Onboarding data
   transportModes: Partial<Record<TransportMode, TransportDetail>>;

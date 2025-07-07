@@ -67,8 +67,19 @@ export const getTodaysActivities = async (userId: string): Promise<Activity[]> =
 // New User Profile functions
 export const setUserProfile = async (userId: string, profileData: Omit<UserProfile, 'id'>) => {
     try {
+        const profileWithTimestamp = {
+            ...profileData,
+            updatedAt: new Date().toISOString(),
+        };
+
+        // Set the main, current profile
         const profileRef = doc(db, 'users', userId, 'profile', 'main');
-        await setDoc(profileRef, profileData);
+        await setDoc(profileRef, profileWithTimestamp);
+
+        // Add to history
+        const historyColRef = collection(db, 'users', userId, 'profile_history');
+        await addDoc(historyColRef, profileWithTimestamp);
+
     } catch (error) {
         console.error("Error setting user profile: ", error);
         throw new Error("Could not save user profile.");
@@ -90,5 +101,22 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
         // Return null instead of throwing an error to make the app more resilient to network issues.
         // The calling component will handle the null case.
         return null;
+    }
+}
+
+export const getProfileHistory = async (userId: string): Promise<UserProfile[]> => {
+    try {
+        const historyColRef = collection(db, 'users', userId, 'profile_history');
+        const q = query(historyColRef, orderBy('updatedAt', 'desc'));
+
+        const querySnapshot = await getDocs(q);
+        const history: UserProfile[] = [];
+        querySnapshot.forEach((doc) => {
+            history.push({ id: doc.id, ...doc.data() } as UserProfile);
+        });
+        return history;
+    } catch (error) {
+        console.error("Error getting profile history: ", error);
+        return []; // Return empty array on error to prevent UI crash
     }
 }
