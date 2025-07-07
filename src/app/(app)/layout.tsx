@@ -27,37 +27,47 @@ export default function AppLayout({
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
+    // While auth state is resolving, do nothing. The skeleton will show.
     if (authLoading) {
-      return; // Wait for the auth state to be determined
-    }
-
-    if (!user) {
-      router.push('/'); // If no user, redirect to login page.
       return;
     }
 
-    // User is logged in, now check for session onboarding status.
-    const onboardingCompleteInSession = sessionStorage.getItem('onboardingComplete');
-
-    if (!onboardingCompleteInSession) {
-      // If onboarding is not complete for this session, redirect to onboarding page.
-      router.push('/onboarding');
-    } else {
-      // Onboarding is complete for this session, allow access to the app.
-      setOnboardingChecked(true);
+    // If auth is resolved and there's no user, redirect to the login page.
+    if (!user) {
+      router.push('/');
+      return;
     }
+
+    // At this point, user is authenticated.
+    const onboardingCompleteInSession = sessionStorage.getItem('onboardingComplete');
+    
+    // If user is on the onboarding page, let them be. This prevents redirect loops.
+    if (pathname === '/onboarding') {
+      setIsVerified(true);
+      return;
+    }
+    
+    // If onboarding is NOT complete for this session, redirect them to it.
+    if (!onboardingCompleteInSession) {
+      router.push('/onboarding');
+      return;
+    }
+
+    // If we've reached here, user is logged in and onboarding is complete for the session.
+    // They can see the page they requested.
+    setIsVerified(true);
+    
   }, [user, authLoading, router, pathname]);
 
   // Show a skeleton while we verify auth and onboarding status.
-  // This prevents content from flashing before redirects happen.
-  if (!onboardingChecked || authLoading || !user) {
+  if (!isVerified) {
     return <AppLayoutSkeleton />;
   }
   
-  // All checks passed, render the main app shell.
+  // All checks passed, render the main app shell with its children.
   return (
     <AppShell>
       {children}
