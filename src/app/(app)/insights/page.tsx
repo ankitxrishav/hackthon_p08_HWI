@@ -5,12 +5,13 @@ import { useAuth } from '@/hooks/use-auth';
 import * as DataService from '@/lib/data';
 import type { WeeklyEmission, CategoryBreakdown, EmissionGoal, ComparisonData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, PieChart, TrendingUp, Target } from 'lucide-react';
+import { Trophy, PieChart, TrendingUp, Target, AlertCircle } from 'lucide-react';
 import { WeeklyEmissionsChart } from '@/components/dashboard/weekly-emissions-chart';
 import { CategoryBreakdownChart } from '@/components/dashboard/category-breakdown-chart';
 import { EmissionGoalProgress } from '@/components/dashboard/emission-goal-progress';
 import { ComparisonCard } from '@/components/dashboard/comparison-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const achievements = [
     { icon: Trophy, title: "Eco-Beginner", description: "Logged your first activity.", color: "text-amber-500" },
@@ -37,6 +38,7 @@ const InsightsSkeleton = () => (
 export default function InsightsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryBreakdown[]>([]);
@@ -47,6 +49,7 @@ export default function InsightsPage() {
     if (user) {
       const fetchData = async () => {
         setLoading(true);
+        setError(null);
         try {
           const [
             fetchedWeekly,
@@ -63,8 +66,13 @@ export default function InsightsPage() {
           setCategoryData(fetchedTodays.breakdown);
           setDailyGoalData(fetchedGoal);
           setComparisonData(fetchedComparison);
-        } catch (error) {
-          console.error("Failed to fetch insights data:", error);
+        } catch (err: any) {
+          console.error("Failed to fetch insights data:", err);
+           if (err.code === 'permission-denied') {
+            setError("You have a permissions error in your database. Please check your Firestore security rules in the Firebase Console.");
+          } else {
+            setError("Could not load insights data. Please try again later.");
+          }
         } finally {
           setLoading(false);
         }
@@ -79,8 +87,20 @@ export default function InsightsPage() {
     return <InsightsSkeleton />;
   }
 
+  if (error) {
+     return (
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        </div>
+    );
+  }
+
   if (!user || !dailyGoalData || !comparisonData) {
-      return <div className="p-8">Could not load insights data. Please try again later.</div>
+      return <div className="p-8 text-center">Could not load insights data. Please try again later.</div>
   }
 
   const weeklyGoalData = {

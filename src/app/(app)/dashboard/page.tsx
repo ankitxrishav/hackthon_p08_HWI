@@ -12,6 +12,9 @@ import { CategoryBreakdownChart } from '@/components/dashboard/category-breakdow
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StreakCard } from '@/components/dashboard/streak-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 const DashboardSkeleton = () => (
   <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -40,6 +43,7 @@ const DashboardSkeleton = () => (
 export default function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
   const [todaysData, setTodaysData] = useState<{ total: number; breakdown: CategoryBreakdown[] }>({ total: 0, breakdown: [] });
@@ -51,6 +55,7 @@ export default function DashboardPage() {
     if (user) {
       const fetchData = async () => {
         setLoading(true);
+        setError(null);
         try {
           const [
             fetchedWeekly,
@@ -70,22 +75,37 @@ export default function DashboardPage() {
           setGoalData(fetchedGoal);
           setComparisonData(fetchedComparison);
           setStreakData(fetchedStreak);
-        } catch (error) {
-          console.error("Failed to fetch dashboard data:", error);
-          // Handle error state in UI if necessary
+        } catch (err: any) {
+          console.error("Failed to fetch dashboard data:", err);
+          if (err.code === 'permission-denied') {
+            setError("You have a permissions error in your database. Please check your Firestore security rules in the Firebase Console.");
+          } else {
+            setError("Could not load dashboard data. Please try again later.");
+          }
         } finally {
           setLoading(false);
         }
       };
       fetchData();
     } else {
-        // Handle case where user is not logged in, though layout should prevent this.
         setLoading(false);
     }
   }, [user]);
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        </div>
+    );
   }
   
   if (!user || !goalData || !comparisonData || !streakData) {
