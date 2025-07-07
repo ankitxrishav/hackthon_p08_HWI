@@ -41,10 +41,10 @@ export default function LoginPage() {
       <div className="flex flex-col items-center space-y-4 text-center">
         <Icons.logo className="size-24 text-primary" />
         <h1 className="text-4xl font-bold tracking-tighter text-foreground sm:text-5xl">
-          CarbonWise
+          Susthira
         </h1>
         <p className="max-w-md text-muted-foreground md:text-xl">
-          Track. Reduce. Impact.
+          Live light. Live long.
         </p>
       </div>
       <div className="mt-12 w-full max-w-sm">
