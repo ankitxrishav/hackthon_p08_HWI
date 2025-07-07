@@ -11,7 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const CalculateEmissionInputSchema = z.object({
+const CalculateEmissionInputSchema = z.object({
   category: z.enum(['Travel', 'Food', 'Energy', 'Shopping']),
   value: z.number().describe('The primary value for the calculation (e.g., distance in km, energy in kWh).'),
   details: z.record(z.any()).optional().describe('Additional details about the activity (e.g., transport mode, meal type).'),
