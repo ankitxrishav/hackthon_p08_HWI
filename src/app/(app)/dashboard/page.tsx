@@ -9,7 +9,7 @@ import { WeeklyEmissionsChart } from '@/components/dashboard/weekly-emissions-ch
 import { TodaysEmissionsCard } from '@/components/dashboard/todays-emissions-card';
 import { ComparisonCard } from '@/components/dashboard/comparison-card';
 import { CategoryBreakdownChart } from '@/components/dashboard/category-breakdown-chart';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StreakCard } from '@/components/dashboard/streak-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
@@ -28,13 +28,11 @@ const DashboardSkeleton = () => (
       <div className="lg:col-span-2">
         <Skeleton className="h-[350px] w-full" />
       </div>
-       <div className="lg:col-span-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div className='lg:col-span-2'>
-               <Skeleton className="h-[150px] w-full" />
-            </div>
-            <Skeleton className="h-[150px] w-full" />
-            <Skeleton className="h-[150px] w-full" />
-        </div>
+       <div className="lg:col-span-4 grid gap-6 md:grid-cols-3">
+          <Skeleton className="h-[280px] w-full" />
+          <Skeleton className="h-[280px] w-full" />
+          <Skeleton className="h-[280px] w-full" />
+      </div>
     </div>
   </div>
 );
@@ -111,6 +109,14 @@ export default function DashboardPage() {
   if (!user || !goalData || !comparisonData || !streakData) {
       return <div className='p-8 text-center'>Could not load dashboard data. Please try again later.</div>
   }
+  
+  const weeklyGoalData: EmissionGoal = {
+    ...goalData, 
+    current: parseFloat(weeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
+    goal: goalData.goal * 7, 
+    label: "Weekly Goal" 
+  };
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -131,12 +137,22 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
         </div>
-        <div className="lg:col-span-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div className='lg:col-span-2'>
-                <EmissionGoalProgress data={goalData} />
+        <div className="lg:col-span-4 grid gap-6 md:grid-cols-3">
+            <Card className="h-full flex flex-col">
+                <CardHeader>
+                    <CardTitle>Goal Progress</CardTitle>
+                    <CardDescription>Daily & Weekly Goals</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 flex-grow">
+                    <EmissionGoalProgress data={goalData} />
+                    <EmissionGoalProgress data={weeklyGoalData} />
+                </CardContent>
+            </Card>
+            <div className="space-y-6">
+                <ComparisonCard data={comparisonData.country} />
+                <ComparisonCard data={comparisonData.world} />
             </div>
-            <ComparisonCard data={comparisonData.country} />
-            <StreakCard data={streakData} />
+            <StreakCard data={streakData} className="h-full" />
         </div>
       </div>
     </div>
