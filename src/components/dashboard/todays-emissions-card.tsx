@@ -9,12 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { formatDistanceToNow } from 'date-fns';
 
 interface TodaysEmissionsCardProps {
   data: {
     total: number;
     breakdown: CategoryBreakdown[];
   };
+  isBaseline?: boolean;
+  updatedAt?: string | null;
 }
 
 function Counter({ from, to }: { from: number; to: number }) {
@@ -39,7 +42,7 @@ function Counter({ from, to }: { from: number; to: number }) {
 }
 
 
-export function TodaysEmissionsCard({ data }: TodaysEmissionsCardProps) {
+export function TodaysEmissionsCard({ data, isBaseline, updatedAt }: TodaysEmissionsCardProps) {
 
   const getEmissionColor = (total: number) => {
     if (total < 10) return 'text-green-600';
@@ -50,7 +53,14 @@ export function TodaysEmissionsCard({ data }: TodaysEmissionsCardProps) {
   return (
     <Card className='text-center'>
       <CardHeader>
-        <CardDescription>Today's Total Emissions</CardDescription>
+        <CardDescription>
+            {isBaseline ? "Your Calculated Daily Baseline" : "Today's Total Emissions"}
+            {isBaseline && updatedAt && (
+                <span className="block text-xs text-muted-foreground/80">
+                    (Last updated: {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })})
+                </span>
+            )}
+        </CardDescription>
         <CardTitle className={`text-6xl font-extrabold tracking-tighter ${getEmissionColor(data.total)}`}>
           <Counter from={0} to={data.total} />
           <span className="text-3xl font-medium text-muted-foreground ml-2">kg CO₂e</span>

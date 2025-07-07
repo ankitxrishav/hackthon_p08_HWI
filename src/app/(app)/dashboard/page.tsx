@@ -16,6 +16,14 @@ import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
+// New type for baseline data
+interface BaselineData {
+  dailyTotal: number;
+  breakdown: CategoryBreakdown[];
+  weeklyChartData: WeeklyEmission[];
+  updatedAt: string | null;
+}
+
 const DashboardSkeleton = () => (
   <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -44,11 +52,13 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   
   // State for data from ACTUAL logged activities
-  const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
-  const [todaysData, setTodaysData] = useState<{ total: number; breakdown: CategoryBreakdown[] }>({ total: 0, breakdown: [] });
+  const [activityWeeklyData, setActivityWeeklyData] = useState<WeeklyEmission[]>([]);
   const [goalData, setGoalData] = useState<EmissionGoal | null>(null);
   const [comparisonData, setComparisonData] = useState<Record<string, ComparisonData> | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
+
+  // New state for BASELINE data from the survey/profile
+  const [baselineData, setBaselineData] = useState<BaselineData | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -56,22 +66,24 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
         try {
+          // Fetch both baseline data and activity data in parallel
           const [
-            fetchedWeekly,
-            fetchedTodays,
+            fetchedBaseline,
+            fetchedActivityWeekly,
             fetchedGoal,
             fetchedComparison,
             fetchedStreak,
           ] = await Promise.all([
+            DataService.getBaselineProfileData(user.uid),
             DataService.getWeeklyEmissionData(user.uid),
-            DataService.getTodaysBreakdown(user.uid),
             DataService.getEmissionGoal(user.uid),
             DataService.getComparisonData(),
             DataService.getStreakData(user.uid),
           ]);
 
-          setWeeklyData(fetchedWeekly);
-          setTodaysData(fetchedTodays);
+          // Set state for both baseline and activity data
+          setBaselineData(fetchedBaseline);
+          setActivityWeeklyData(fetchedActivityWeekly);
           setGoalData(fetchedGoal);
           setComparisonData(fetchedComparison);
           setStreakData(fetchedStreak);
@@ -108,38 +120,42 @@ export default function DashboardPage() {
     );
   }
   
-  if (!user || !goalData || !comparisonData || !streakData) {
-      return <div className='p-8 text-center'>Could not load dashboard data. Please log an activity to get started.</div>
+  // A new user needs a baseline profile to see the dashboard.
+  if (!user || !goalData || !comparisonData || !streakData || !baselineData) {
+      return <div className='p-8 text-center'>Could not load dashboard data. Please complete your profile survey to get started.</div>
   }
   
-  // This is based on ACTUAL activities and is used for the goal progress bar
+  // Goal data now uses ACTUAL activity data against the goal from the profile. This is correct.
   const weeklyGoalData: EmissionGoal = {
     ...goalData, 
-    current: parseFloat(weeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
+    current: parseFloat(activityWeeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
     goal: goalData.goal * 7, 
     label: "Weekly Goal" 
   };
-
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-4">
-            <TodaysEmissionsCard data={{ total: todaysData.total, breakdown: todaysData.breakdown }} />
+            <TodaysEmissionsCard 
+                data={{ total: baselineData.dailyTotal, breakdown: baselineData.breakdown }} 
+                isBaseline={true}
+                updatedAt={baselineData.updatedAt}
+            />
         </div>
         <div className="lg:col-span-2">
-           <WeeklyEmissionsChart data={weeklyData} />
+           <WeeklyEmissionsChart data={baselineData.weeklyChartData} isBaseline={true} />
         </div>
         <div className="lg:col-span-2">
              <Card className='h-full'>
                 <CardHeader>
-                    <CardTitle>Today's Breakdown</CardTitle>
+                    <CardTitle>Daily Baseline Breakdown</CardTitle>
                     <CardDescription>
-                        Your emissions breakdown from today's logged activities.
+                        Your estimated daily emissions based on your profile survey.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className='h-[300px]'>
-                    <CategoryBreakdownChart data={todaysData.breakdown} />
+                    <CategoryBreakdownChart data={baselineData.breakdown} />
                 </CardContent>
             </Card>
         </div>
