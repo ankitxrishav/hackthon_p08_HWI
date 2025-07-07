@@ -22,7 +22,9 @@ export default function LoginPage() {
         title: 'Success!',
         description: `Welcome, ${result.user.displayName}!`,
       });
-      // The auth provider will handle routing to either onboarding or dashboard
+      // Redirect to the dashboard, where the app layout will handle
+      // routing to either onboarding or the main app.
+      router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
