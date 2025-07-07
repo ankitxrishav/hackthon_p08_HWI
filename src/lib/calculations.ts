@@ -1,51 +1,59 @@
 import type { UserProfile } from '@/types';
 
-// Emission factors (in kg CO₂e) based on user-provided logic
+// Emission factors (in kg CO₂e) based on standard datasets like IPCC & DEFRA.
+// Aligned with the app's carbon-engine for consistency.
 const EMISSION_FACTORS = {
   transport: {
-    car: 0.192,     // per km
-    metro: 0.045,   // per km
-    bus: 0.10,      // per km
-    flights: 0.25,  // per km
+    car: 0.192,       // per km
+    metro: 0.045,     // per km
+    bus: 0.10,        // per km
+    flights: 0.145,   // per km (economy)
     bike: 0,
     walk: 0,
   },
-  diet: {
-    'meat-heavy': 3.5, // per day
-    mixed: 2.5,        // per day
-    vegetarian: 1.5,   // per day
+  diet: { // Factors are per meal
+    'meat-heavy': 3.5, // kg CO₂e/meal
+    mixed: 2.5,        // kg CO₂e/meal
+    vegetarian: 1.2,   // kg CO₂e/meal
   },
   energy: {
     kwh: 0.82, // per kWh (India average)
   },
   shopping: {
-    per_1000_rupees: 0.4, // kg CO2e per 1000 INR
+    per_rupee: 0.0004, // kg CO2e per rupee (equivalent to 0.4kg per 1000 INR)
   }
 };
 
 /**
  * Calculates the baseline weekly and daily carbon emissions based on user profile data.
- * @param profile - The user's profile data from onboarding.
+ * This uses the survey data to create a personalized emission goal for the dashboard.
+ * @param profile - The user's profile data from onboarding or profile page.
  * @returns An object containing the daily and weekly baseline emissions in kg CO₂e.
  */
 export function calculateBaselineEmissions(profile: UserProfile): { daily: number; weekly: number } {
-  let weeklyEmissions = 0;
+  // Personal emissions are calculated directly
+  let personalWeeklyEmissions = 0;
 
-  // 1. Transport Emissions (Weekly)
+  // 1. Transport Emissions (Weekly) - This is a personal activity
   if (profile.transportModes) {
     for (const [mode, details] of Object.entries(profile.transportModes)) {
       if (details && EMISSION_FACTORS.transport[mode as keyof typeof EMISSION_FACTORS.transport] !== undefined) {
         const factor = EMISSION_FACTORS.transport[mode as keyof typeof EMISSION_FACTORS.transport];
-        weeklyEmissions += details.km_per_week * factor;
+        personalWeeklyEmissions += (details.km_per_week || 0) * factor;
       }
     }
   }
 
-  // 2. Diet Emissions (Weekly)
-  const dailyDietEmissions = EMISSION_FACTORS.diet[profile.diet] || EMISSION_FACTORS.diet.mixed;
-  weeklyEmissions += dailyDietEmissions * 7;
+  // 2. Diet Emissions (Weekly) - This is a personal activity
+  const mealsPerDay = profile.mealsPerDay > 0 ? profile.mealsPerDay : 1;
+  const dietFactorPerMeal = EMISSION_FACTORS.diet[profile.diet] || EMISSION_FACTORS.diet.mixed;
+  const dailyDietEmissions = dietFactorPerMeal * mealsPerDay;
+  personalWeeklyEmissions += dailyDietEmissions * 7;
   
-  // 3. Energy Emissions (Weekly)
+  // Shared emissions are calculated for the household and then divided
+  let sharedWeeklyEmissions = 0;
+  
+  // 3. Energy Emissions (Weekly) - This is a shared household resource
   const monthlyKwh = profile.monthlyKwh || 0;
   let monthlyEnergyEmissions = monthlyKwh * EMISSION_FACTORS.energy.kwh;
   if (profile.usesRenewable) {
@@ -55,23 +63,24 @@ export function calculateBaselineEmissions(profile: UserProfile): { daily: numbe
       monthlyEnergyEmissions *= 1.2; // 20% increase for AC/heater
   }
   const weeklyEnergyEmissions = monthlyEnergyEmissions / 4.3; // Avg weeks in a month
+  sharedWeeklyEmissions += weeklyEnergyEmissions;
   
-
-  // 4. Shopping Emissions (Weekly)
+  // 4. Shopping Emissions (Weekly) - This is treated as a shared household resource
   const monthlySpend = profile.monthlySpend || 0;
-  const monthlyShoppingEmissions = (monthlySpend / 1000) * EMISSION_FACTORS.shopping.per_1000_rupees;
+  const monthlyShoppingEmissions = monthlySpend * EMISSION_FACTORS.shopping.per_rupee;
   const weeklyShoppingEmissions = monthlyShoppingEmissions / 4.3;
-  
-  // 5. Household Size Adjustment for shared resources (Energy)
+  sharedWeeklyEmissions += weeklyShoppingEmissions;
+
+  // 5. Household Size Adjustment
+  // Divide shared emissions by the number of people to get the per-capita share.
   const householdSize = profile.householdSize > 0 ? profile.householdSize : 1;
-  const perCapitaWeeklyEnergyEmissions = weeklyEnergyEmissions / householdSize;
+  const perCapitaWeeklySharedEmissions = sharedWeeklyEmissions / householdSize;
 
-  // Summing up personal emissions with per-capita shared emissions
-  weeklyEmissions += perCapitaWeeklyEnergyEmissions + weeklyShoppingEmissions;
+  // 6. Total Emissions
+  const totalWeeklyEmissions = personalWeeklyEmissions + perCapitaWeeklySharedEmissions;
 
-
-  const finalWeekly = parseFloat(weeklyEmissions.toFixed(2));
-  const finalDaily = parseFloat((weeklyEmissions / 7).toFixed(2));
+  const finalWeekly = parseFloat(totalWeeklyEmissions.toFixed(2));
+  const finalDaily = parseFloat((totalWeeklyEmissions / 7).toFixed(2));
 
   return {
     weekly: finalWeekly,
