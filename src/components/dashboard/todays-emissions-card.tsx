@@ -1,3 +1,5 @@
+'use client';
+
 import type { CategoryBreakdown } from '@/types';
 import {
   Card,
@@ -6,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { CategoryBreakdownChart } from './category-breakdown-chart';
 
 interface TodaysEmissionsCardProps {
   data: {
@@ -16,17 +17,22 @@ interface TodaysEmissionsCardProps {
 }
 
 export function TodaysEmissionsCard({ data }: TodaysEmissionsCardProps) {
+
+  const getEmissionColor = (total: number) => {
+    if (total < 10) return 'text-green-600';
+    if (total < 20) return 'text-yellow-500';
+    return 'text-red-600';
+  }
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription>Today's CO₂ Emission</CardDescription>
-        <CardTitle className="text-4xl">
-          {data.total.toFixed(1)} <span className="text-xl font-medium text-muted-foreground">kg CO₂e</span>
+    <Card className='text-center'>
+      <CardHeader>
+        <CardDescription>Today's Total Emissions</CardDescription>
+        <CardTitle className={`text-6xl font-extrabold tracking-tighter ${getEmissionColor(data.total)}`}>
+          {data.total.toFixed(1)}
+          <span className="text-3xl font-medium text-muted-foreground ml-2">kg CO₂e</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="h-[200px]">
-        <CategoryBreakdownChart data={data.breakdown} />
-      </CardContent>
     </Card>
   );
 }

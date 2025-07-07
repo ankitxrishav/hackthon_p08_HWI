@@ -2,12 +2,11 @@
 
 import * as React from 'react';
 import type { CategoryBreakdown } from '@/types';
-import { Pie, PieChart, Cell } from 'recharts';
+import { Pie, PieChart, Cell, Tooltip } from 'recharts';
 import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
-  ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
@@ -34,11 +33,11 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
   );
 
   return (
-    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-full">
+    <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
       <PieChart>
-        <ChartTooltip
+        <Tooltip
           cursor={false}
-          content={<ChartTooltipContent indicator="dot" nameKey="name" />}
+          content={<ChartTooltipContent indicator="dot" hideLabel />}
         />
         <Pie
           data={chartData}
@@ -46,45 +45,21 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
           nameKey="name"
           cx="50%"
           cy="50%"
+          innerRadius={60}
           outerRadius={100}
-          labelLine={false}
-          label={({
-            cx,
-            cy,
-            midAngle,
-            innerRadius,
-            outerRadius,
-            percent,
-          }) => {
-            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-            const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-            const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-
-            return (
-              <text
-                x={x}
-                y={y}
-                fill="white"
-                textAnchor={x > cx ? 'start' : 'end'}
-                dominantBaseline="central"
-                className="text-xs font-medium"
-              >
-                {`${(percent * 100).toFixed(0)}%`}
-              </text>
-            );
-          }}
+          strokeWidth={2}
         >
           {chartData.map((entry) => (
             <Cell
               key={`cell-${entry.name}`}
               fill={entry.fill}
-              stroke={entry.fill}
+              stroke={'hsl(var(--background))'}
             />
           ))}
         </Pie>
         <ChartLegend
           content={<ChartLegendContent nameKey="name" />}
-          className="[&_.recharts-legend-item-text]:text-muted-foreground"
+          className="-translate-y-2 [&_.recharts-legend-item-text]:text-muted-foreground"
         />
       </PieChart>
     </ChartContainer>

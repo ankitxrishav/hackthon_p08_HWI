@@ -17,19 +17,18 @@ export function EmissionGoalProgress({ data }: EmissionGoalProgressProps) {
   const progressPercentage = (current / goal) * 100;
 
   return (
-    <Card>
+    <Card className='h-full'>
       <CardHeader>
-        <CardTitle>{label}</CardTitle>
-        <CardDescription>
-          You've used {progressPercentage.toFixed(0)}% of your monthly carbon emission goal.
+        <CardTitle className='text-base font-medium'>{label}</CardTitle>
+        <CardDescription className='text-xs'>
+          {current.toLocaleString()} kg of {goal.toLocaleString()} kg CO₂e used.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <Progress value={progressPercentage} />
+          <Progress value={progressPercentage} className='h-3' />
           <div className="flex justify-between text-sm font-medium text-muted-foreground">
-            <span>{current.toLocaleString()} kg CO₂e</span>
-            <span className="text-foreground">{goal.toLocaleString()} kg CO₂e Goal</span>
+            <span className='text-xs'>{progressPercentage.toFixed(0)}% of goal</span>
           </div>
         </div>
       </CardContent>

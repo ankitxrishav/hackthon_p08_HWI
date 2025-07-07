@@ -39,3 +39,9 @@ export interface ComparisonData {
     percentage: number;
     icon: LucideIcon;
 }
+
+export interface StreakData {
+    count: number;
+    label: string;
+    icon: LucideIcon;
+}
