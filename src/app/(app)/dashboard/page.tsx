@@ -14,7 +14,6 @@ import { StreakCard } from '@/components/dashboard/streak-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format } from 'date-fns';
 
 
 const DashboardSkeleton = () => (
@@ -46,12 +45,10 @@ export default function DashboardPage() {
   
   // State for data from ACTUAL logged activities
   const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
+  const [todaysData, setTodaysData] = useState<{ total: number; breakdown: CategoryBreakdown[] }>({ total: 0, breakdown: [] });
   const [goalData, setGoalData] = useState<EmissionGoal | null>(null);
   const [comparisonData, setComparisonData] = useState<Record<string, ComparisonData> | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
-  
-  // State for data from the user's PROFILE (survey)
-  const [baselineData, setBaselineData] = useState<{ dailyTotal: number; breakdown: CategoryBreakdown[]; weeklyChartData: WeeklyEmission[], updatedAt: string | null } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -61,23 +58,23 @@ export default function DashboardPage() {
         try {
           const [
             fetchedWeekly,
+            fetchedTodays,
             fetchedGoal,
             fetchedComparison,
             fetchedStreak,
-            fetchedBaseline
           ] = await Promise.all([
             DataService.getWeeklyEmissionData(user.uid),
+            DataService.getTodaysBreakdown(user.uid),
             DataService.getEmissionGoal(user.uid),
             DataService.getComparisonData(),
             DataService.getStreakData(user.uid),
-            DataService.getBaselineProfileData(user.uid)
           ]);
 
           setWeeklyData(fetchedWeekly);
+          setTodaysData(fetchedTodays);
           setGoalData(fetchedGoal);
           setComparisonData(fetchedComparison);
           setStreakData(fetchedStreak);
-          setBaselineData(fetchedBaseline);
         } catch (err: any) {
           console.error("Failed to fetch dashboard data:", err);
           if (err.code === 'permission-denied' || err.message.includes('permission-denied')) {
@@ -111,8 +108,8 @@ export default function DashboardPage() {
     );
   }
   
-  if (!user || !goalData || !comparisonData || !streakData || !baselineData) {
-      return <div className='p-8 text-center'>Could not load dashboard data. Please complete your profile to get started.</div>
+  if (!user || !goalData || !comparisonData || !streakData) {
+      return <div className='p-8 text-center'>Could not load dashboard data. Please log an activity to get started.</div>
   }
   
   // This is based on ACTUAL activities and is used for the goal progress bar
@@ -128,26 +125,21 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-4">
-            <TodaysEmissionsCard data={{ total: baselineData.dailyTotal, breakdown: baselineData.breakdown }} />
+            <TodaysEmissionsCard data={{ total: todaysData.total, breakdown: todaysData.breakdown }} />
         </div>
         <div className="lg:col-span-2">
-           <WeeklyEmissionsChart data={baselineData.weeklyChartData} />
+           <WeeklyEmissionsChart data={weeklyData} />
         </div>
         <div className="lg:col-span-2">
              <Card className='h-full'>
                 <CardHeader>
-                    <CardTitle>Daily Baseline Breakdown</CardTitle>
+                    <CardTitle>Today's Breakdown</CardTitle>
                     <CardDescription>
-                        Your estimated daily footprint from your profile.
-                        {baselineData.updatedAt && (
-                           <span className="block text-xs mt-1">
-                                Last updated: {format(new Date(baselineData.updatedAt), 'PPP')}
-                           </span>
-                        )}
+                        Your emissions breakdown from today's logged activities.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className='h-[300px]'>
-                    <CategoryBreakdownChart data={baselineData.breakdown} />
+                    <CategoryBreakdownChart data={todaysData.breakdown} />
                 </CardContent>
             </Card>
         </div>
