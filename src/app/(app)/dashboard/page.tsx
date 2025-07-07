@@ -43,11 +43,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // State for data from ACTUAL logged activities
   const [weeklyData, setWeeklyData] = useState<WeeklyEmission[]>([]);
-  const [todaysData, setTodaysData] = useState<{ total: number; breakdown: CategoryBreakdown[] }>({ total: 0, breakdown: [] });
   const [goalData, setGoalData] = useState<EmissionGoal | null>(null);
   const [comparisonData, setComparisonData] = useState<Record<string, ComparisonData> | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
+  
+  // State for data from the user's PROFILE (survey)
+  const [baselineData, setBaselineData] = useState<{ dailyTotal: number; breakdown: CategoryBreakdown[]; weeklyChartData: WeeklyEmission[] } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -57,22 +60,23 @@ export default function DashboardPage() {
         try {
           const [
             fetchedWeekly,
-            fetchedTodays,
             fetchedGoal,
             fetchedComparison,
-            fetchedStreak
+            fetchedStreak,
+            fetchedBaseline
           ] = await Promise.all([
             DataService.getWeeklyEmissionData(user.uid),
-            DataService.getTodaysBreakdown(user.uid),
             DataService.getEmissionGoal(user.uid),
             DataService.getComparisonData(),
             DataService.getStreakData(user.uid),
+            DataService.getBaselineProfileData(user.uid)
           ]);
+
           setWeeklyData(fetchedWeekly);
-          setTodaysData(fetchedTodays);
           setGoalData(fetchedGoal);
           setComparisonData(fetchedComparison);
           setStreakData(fetchedStreak);
+          setBaselineData(fetchedBaseline);
         } catch (err: any) {
           console.error("Failed to fetch dashboard data:", err);
           if (err.code === 'permission-denied') {
@@ -106,10 +110,11 @@ export default function DashboardPage() {
     );
   }
   
-  if (!user || !goalData || !comparisonData || !streakData) {
+  if (!user || !goalData || !comparisonData || !streakData || !baselineData) {
       return <div className='p-8 text-center'>Could not load dashboard data. Please try again later.</div>
   }
   
+  // This is based on ACTUAL activities and is used for the goal progress bar
   const weeklyGoalData: EmissionGoal = {
     ...goalData, 
     current: parseFloat(weeklyData.reduce((acc, day) => acc + day.emissions, 0).toFixed(2)), 
@@ -122,26 +127,27 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-4">
-            <TodaysEmissionsCard data={todaysData} />
+            <TodaysEmissionsCard data={{ total: baselineData.dailyTotal, breakdown: baselineData.breakdown }} />
         </div>
         <div className="lg:col-span-2">
-           <WeeklyEmissionsChart data={weeklyData} />
+           <WeeklyEmissionsChart data={baselineData.weeklyChartData} />
         </div>
         <div className="lg:col-span-2">
              <Card className='h-full'>
                 <CardHeader>
-                    <CardTitle>Today's Breakdown</CardTitle>
+                    <CardTitle>Daily Baseline Breakdown</CardTitle>
+                    <CardDescription>Your estimated daily footprint from your profile.</CardDescription>
                 </CardHeader>
                 <CardContent className='h-[300px]'>
-                    <CategoryBreakdownChart data={todaysData.breakdown} />
+                    <CategoryBreakdownChart data={baselineData.breakdown} />
                 </CardContent>
             </Card>
         </div>
         <div className="lg:col-span-4 grid gap-6 md:grid-cols-3">
             <Card className="h-full flex flex-col">
                 <CardHeader>
-                    <CardTitle>Goal Progress</CardTitle>
-                    <CardDescription>Daily & Weekly Goals</CardDescription>
+                    <CardTitle>Activity vs. Goal</CardTitle>
+                    <CardDescription>Your logged activity against your daily & weekly goals.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 flex-grow">
                     <EmissionGoalProgress data={goalData} />

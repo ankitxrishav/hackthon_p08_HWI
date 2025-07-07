@@ -2,6 +2,7 @@ import type { WeeklyEmission, CategoryBreakdown, EmissionGoal, ComparisonData, S
 import { Globe, Flag, Flame } from 'lucide-react';
 import { getActivitiesForDateRange, getTodaysActivities, getUserProfile } from './firestore';
 import { subDays, format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { calculateBaselineBreakdown } from './calculations';
 
 export async function getWeeklyEmissionData(userId: string): Promise<WeeklyEmission[]> {
   const today = new Date();
@@ -111,4 +112,38 @@ export async function getStreakData(userId: string): Promise<StreakData> {
         label: "Low-Carbon Streak",
         icon: Flame
     }
+}
+
+
+export async function getBaselineProfileData(userId: string) {
+  const profile = await getUserProfile(userId);
+
+  if (!profile) {
+    const emptyDays = Array.from({ length: 7 }).map((_, i) => ({
+      day: format(subDays(new Date(), 6 - i), 'E'),
+      emissions: 0,
+    }));
+    return {
+      dailyTotal: 0,
+      breakdown: [],
+      weeklyChartData: emptyDays,
+    };
+  }
+  
+  const breakdownData = calculateBaselineBreakdown(profile);
+  const dailyAverage = breakdownData.total;
+
+  const weeklyChartData = Array.from({ length: 7 }).map((_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    return {
+      day: format(date, 'E'),
+      emissions: dailyAverage,
+    };
+  });
+
+  return {
+    dailyTotal: dailyAverage,
+    breakdown: breakdownData.breakdown,
+    weeklyChartData,
+  };
 }

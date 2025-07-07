@@ -1,4 +1,4 @@
-import type { UserProfile } from '@/types';
+import type { UserProfile, CategoryBreakdown } from '@/types';
 
 // Emission factors (in kg CO₂e) based on standard datasets like IPCC & DEFRA.
 // Aligned with the app's carbon-engine for consistency.
@@ -85,5 +85,73 @@ export function calculateBaselineEmissions(profile: UserProfile): { daily: numbe
   return {
     weekly: finalWeekly,
     daily: finalDaily,
+  };
+}
+
+
+/**
+ * Calculates a daily breakdown of baseline emissions by category from a user profile.
+ * @param profile - The user's profile data.
+ * @returns An object with the total daily emission and an array for the category breakdown.
+ */
+export function calculateBaselineBreakdown(profile: UserProfile): { total: number; breakdown: CategoryBreakdown[] } {
+  // Personal emissions (weekly)
+  let transportEmissions = 0;
+  if (profile.transportModes) {
+    for (const [mode, details] of Object.entries(profile.transportModes)) {
+      if (details && EMISSION_FACTORS.transport[mode as keyof typeof EMISSION_FACTORS.transport] !== undefined) {
+        const factor = EMISSION_FACTORS.transport[mode as keyof typeof EMISSION_FACTORS.transport];
+        transportEmissions += (details.km_per_week || 0) * factor;
+      }
+    }
+  }
+
+  const mealsPerDay = profile.mealsPerDay > 0 ? profile.mealsPerDay : 1;
+  const dietFactorPerMeal = EMISSION_FACTORS.diet[profile.diet] || EMISSION_FACTORS.diet.mixed;
+  const foodEmissions = (dietFactorPerMeal * mealsPerDay) * 7;
+
+  // Shared emissions (weekly)
+  const monthlyKwh = profile.monthlyKwh || 0;
+  let monthlyEnergyEmissions = monthlyKwh * EMISSION_FACTORS.energy.kwh;
+  if (profile.usesRenewable) {
+      monthlyEnergyEmissions *= 0.5;
+  }
+  if (profile.usesAcHeater) {
+      monthlyEnergyEmissions *= 1.2;
+  }
+  const energyEmissions = monthlyEnergyEmissions / 4.3;
+  
+  const monthlySpend = profile.monthlySpend || 0;
+  const shoppingEmissions = (monthlySpend * EMISSION_FACTORS.shopping.per_rupee) / 4.3;
+
+  // Per-capita weekly emissions for each category
+  const householdSize = profile.householdSize > 0 ? profile.householdSize : 1;
+  const weeklyBreakdown = {
+    Travel: transportEmissions,
+    Food: foodEmissions,
+    Energy: energyEmissions / householdSize,
+    Shopping: shoppingEmissions / householdSize,
+  };
+
+  // Convert to daily breakdown
+  const dailyBreakdown = {
+      Travel: weeklyBreakdown.Travel / 7,
+      Food: weeklyBreakdown.Food / 7,
+      Energy: weeklyBreakdown.Energy / 7,
+      Shopping: weeklyBreakdown.Shopping / 7,
+  };
+  
+  const totalDailyEmissions = Object.values(dailyBreakdown).reduce((sum, val) => sum + val, 0);
+
+  const chartData: CategoryBreakdown[] = [
+    { name: 'Travel', emissions: parseFloat(dailyBreakdown.Travel.toFixed(2)), fill: 'hsl(var(--chart-1))' },
+    { name: 'Food', emissions: parseFloat(dailyBreakdown.Food.toFixed(2)), fill: 'hsl(var(--chart-2))' },
+    { name: 'Energy', emissions: parseFloat(dailyBreakdown.Energy.toFixed(2)), fill: 'hsl(var(--chart-3))' },
+    { name: 'Shopping', emissions: parseFloat(dailyBreakdown.Shopping.toFixed(2)), fill: 'hsl(var(--chart-4))' },
+  ];
+
+  return {
+    total: parseFloat(totalDailyEmissions.toFixed(2)),
+    breakdown: chartData,
   };
 }
