@@ -33,6 +33,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await auth.signOut();
+    // This is the key fix: by removing the session item on sign-out, we ensure
+    // that the next login requires the user to go through onboarding again.
+    sessionStorage.removeItem('onboardingComplete');
     setUser(null);
   };
 
